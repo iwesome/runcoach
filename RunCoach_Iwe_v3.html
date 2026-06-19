@@ -124,6 +124,28 @@ html,body{height:100%;background:#fff;font-family:-apple-system,BlinkMacSystemFo
 .import-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--g100)}
 .import-check{width:20px;height:20px;border-radius:50%;background:var(--greenlt);display:flex;align-items:center;justify-content:center;font-size:11px;color:#15803D;flex-shrink:0}
 .import-info{flex:1;font-size:12px;color:var(--g700)}
+/* PLAN VS ACTUAL */
+.pva-wrap{padding:12px 16px}
+.pva-header{font-size:11px;font-weight:800;color:var(--g400);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px}
+.pva-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pva-box{border-radius:12px;padding:12px;border:1.5px solid var(--g200)}
+.pva-box.plan{background:var(--skylt);border-color:var(--sky)}
+.pva-box.actual{background:var(--greenlt);border-color:var(--green)}
+.pva-box.actual.miss{background:var(--orangelt);border-color:var(--orange)}
+.pva-box.actual.great{background:var(--greenlt);border-color:var(--green)}
+.pva-label{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.pva-box.plan .pva-label{color:var(--sky2)}
+.pva-box.actual .pva-label{color:#15803D}
+.pva-box.actual.miss .pva-label{color:#C2410C}
+.pva-stat{display:flex;flex-direction:column;gap:4px}
+.pva-row{display:flex;justify-content:space-between;align-items:center}
+.pva-key{font-size:11px;color:var(--g500)}
+.pva-val{font-size:12px;font-weight:800;color:var(--g900)}
+.pva-verdict{margin-top:10px;border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.5}
+.pva-verdict.great{background:var(--greenlt);color:#15803D}
+.pva-verdict.ok{background:var(--skylt);color:var(--sky2)}
+.pva-verdict.miss{background:var(--orangelt);color:#C2410C}
+.pva-verdict.over{background:var(--purplelt);color:#6D28D9}
 </style>
 </head>
 <body>
@@ -283,12 +305,76 @@ const GOAL_WEEKS = {
 };
 
 // ============================================================
+// SUPABASE CONFIG
+// ============================================================
+const SB_URL = 'https://pmnnencxlpiiciovrdue.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtbm5lbmN4bHBpaWNpb3ZyZHVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3OTgxODQsImV4cCI6MjA5NzM3NDE4NH0.x6ZDBEc9LZ2eEjgP8jMn5kxE9oARveYK5Q3ArUJgOFE';
+const SB_HEADERS = {'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
+const SB_USER = 'iwe';
+
+async function sbFetch(path, opts={}){
+  const res = await fetch(SB_URL+'/rest/v1/'+path, {headers:SB_HEADERS, ...opts});
+  if(!res.ok) throw new Error('Supabase error: '+res.status);
+  return res.json();
+}
+
+async function loadLogsFromSupabase(){
+  try{
+    showSyncStatus('⏳ Memuat data dari cloud...');
+    const data = await sbFetch(`run_logs?user_id=eq.${SB_USER}&order=d.desc`);
+    APP.importedLogs = data.map(r=>({
+      d:r.d, n:r.n, km:r.km, min:r.min, p:r.p, hr:r.hr||0, cal:r.cal||0,
+      src:r.src||'csv', _syncDate:r.sync_date||''
+    }));
+    saveApp();
+    showSyncStatus('☁️ Data cloud dimuat: '+APP.importedLogs.length+' sesi', true);
+    renderToday(); renderLog();
+  }catch(e){
+    showSyncStatus('⚠️ Offline — pakai data lokal', false, true);
+  }
+}
+
+async function saveLogsToSupabase(logs){
+  try{
+    showSyncStatus('⏫ Menyimpan ke cloud...');
+    const rows = logs.map(l=>({
+      user_id: SB_USER,
+      d:l.d, n:l.n, km:l.km, min:l.min, p:l.p,
+      hr:l.hr||0, cal:l.cal||0, src:l.src||'csv', sync_date:l._syncDate||''
+    }));
+    // Upsert — conflict on (user_id, d) → update
+    await sbFetch('run_logs?on_conflict=user_id,d', {
+      method:'POST',
+      body: JSON.stringify(rows),
+      headers:{...SB_HEADERS,'Prefer':'resolution=merge-duplicates'}
+    });
+    showSyncStatus('✅ Tersimpan di cloud!', true);
+  }catch(e){
+    showSyncStatus('⚠️ Gagal sync cloud — tersimpan lokal', false, true);
+  }
+}
+
+function showSyncStatus(msg, success=false, warn=false){
+  let el = document.getElementById('sync-status-bar');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'sync-status-bar';
+    el.style.cssText = 'position:fixed;top:0;left:50%;transform:translateX(-50%);background:var(--g900);color:#fff;padding:6px 16px;border-radius:0 0 12px 12px;font-size:12px;font-weight:600;z-index:9999;transition:all .3s;max-width:430px;width:100%;text-align:center';
+    document.body.appendChild(el);
+  }
+  el.style.background = success ? 'var(--green)' : warn ? 'var(--orange)' : 'var(--g800)';
+  el.textContent = msg;
+  el.style.display = 'block';
+  if(success || warn) setTimeout(()=>{ el.style.display='none'; }, 3000);
+}
+
+// ============================================================
 // STATE
 // ============================================================
 let APP = {
-  plan: null,           // generated plan (array of {d,t,k,p,type,w,tip})
-  target: null,         // current target config
-  importedLogs: [],     // CSV-uploaded logs
+  plan: null,
+  target: null,
+  importedLogs: [],
   weekOffset: 0,
   selDay: new Date().getDay()
 };
@@ -303,7 +389,6 @@ function loadApp(){
       APP = {...APP, ...parsed};
     }
   }catch(e){}
-  // If no custom plan, use ICS plan as default
   if(!APP.plan) APP.plan = ICS_PLAN;
   if(!APP.target) APP.target = {type:'35k', raceName:'35K Race Day', raceDate:'2027-05-27', days:4};
 }
@@ -311,6 +396,9 @@ function saveApp(){
   try{ localStorage.setItem('rc_v3', JSON.stringify(APP)); }catch(e){}
 }
 loadApp();
+
+// Load from Supabase on startup (async, non-blocking)
+loadLogsFromSupabase();
 
 // ============================================================
 // COMPUTED FITNESS FROM HISTORY
@@ -720,13 +808,89 @@ function renderSchedContent(){
   const ds=dt.toISOString().slice(0,10);
   const sess=plan.find(p=>p.d===ds);
   const isToday=ds===new Date().toISOString().slice(0,10);
-  const isDone=allLogs().some(l=>l.d===ds);
+  const actual=allLogs().find(l=>l.d===ds);
+  const isDone=!!actual;
   const el=document.getElementById('sched-content');
   if(!sess||sess.type==='rest'){
-    el.innerHTML=`<div class="empty"><div class="empty-i">💤</div><div class="empty-t">Hari Istirahat</div><div class="empty-s">Recovery aktif atau stretching.</div></div>`;
+    // Rest day — still show actual if they ran
+    if(actual){
+      el.innerHTML=`<div class="empty"><div class="empty-i">😮</div><div class="empty-t">Bonus Run!</div><div class="empty-s">Hari istirahat, tapi kamu tetap lari.</div></div>
+      <div class="pva-wrap">
+        <div class="pva-header">📊 Aktual</div>
+        <div class="pva-box actual" style="border-radius:12px;padding:14px">
+          <div class="pva-label">Actual</div>
+          <div class="pva-stat">
+            <div class="pva-row"><span class="pva-key">Jarak</span><span class="pva-val">${actual.km} km</span></div>
+            <div class="pva-row"><span class="pva-key">Durasi</span><span class="pva-val">${actual.min} mnt</span></div>
+            <div class="pva-row"><span class="pva-key">Pace</span><span class="pva-val">${actual.p}/km</span></div>
+            ${actual.hr?`<div class="pva-row"><span class="pva-key">HR</span><span class="pva-val">${actual.hr} bpm</span></div>`:''}
+          </div>
+        </div>
+      </div>`;
+    } else {
+      el.innerHTML=`<div class="empty"><div class="empty-i">💤</div><div class="empty-t">Hari Istirahat</div><div class="empty-s">Recovery aktif atau stretching.</div></div>`;
+    }
     return;
   }
   const col=TYPE_COLOR[sess.type]||'var(--sky)'; const bg=TYPE_BG[sess.type]||'var(--skylt)';
+
+  // Plan vs Actual section
+  let pvaHtml = '';
+  if(actual){
+    const planKm = parseFloat(sess.k)||0;
+    const actualKm = parseFloat(actual.km)||0;
+    const kmDiff = actualKm - planKm;
+    const kmPct = planKm>0 ? Math.round((actualKm/planKm)*100) : 100;
+
+    const planPaceSec = paceToSec(sess.p);
+    const actualPaceSec = paceToSec(actual.p);
+    const paceDiff = planPaceSec>0 && actualPaceSec>0 ? planPaceSec - actualPaceSec : 0; // positive = faster than plan
+
+    // Verdict
+    let verdictClass, verdictText;
+    const kmOk = kmPct >= 90;
+    const paceOk = paceDiff >= -15; // within 15 sec/km of plan
+    const isFaster = paceDiff > 15;
+    const isOver = kmPct > 115;
+    if(isOver && isFaster){
+      verdictClass='over'; verdictText=`🔥 Overachieved! +${kmDiff.toFixed(1)}km lebih dan pace lebih cepat dari plan. Pastikan recovery cukup ya!`;
+    } else if(kmOk && paceOk){
+      verdictClass='great'; verdictText=`✅ Mantap! Lari sesuai plan. ${Math.abs(kmDiff)<0.3?'Jarak spot on!':kmDiff>0?'+'+kmDiff.toFixed(1)+'km bonus':kmDiff.toFixed(1)+'km'}`;
+    } else if(!kmOk && paceOk){
+      verdictClass='miss'; verdictText=`⚠️ Jarak kurang ${Math.abs(kmDiff).toFixed(1)}km dari target (${kmPct}%). Pace sudah oke. Besok coba kejar ya!`;
+    } else if(kmOk && !paceOk){
+      verdictClass='ok'; verdictText=`🕐 Jarak tercapai tapi pace ${secToPace(Math.abs(paceDiff))} lebih lambat dari target. Wajar, jaga konsistensi.`;
+    } else {
+      verdictClass='miss'; verdictText=`⚠️ Jarak dan pace di bawah target. Cek kondisi tubuh — mungkin perlu lebih banyak recovery.`;
+    }
+
+    const actualBoxClass = verdictClass==='great'||verdictClass==='over' ? 'actual great' : 'actual miss';
+
+    pvaHtml = `<div class="pva-wrap">
+      <div class="pva-header">📊 Plan vs Actual</div>
+      <div class="pva-grid">
+        <div class="pva-box plan">
+          <div class="pva-label">📋 Plan</div>
+          <div class="pva-stat">
+            <div class="pva-row"><span class="pva-key">Jarak</span><span class="pva-val">${sess.k} km</span></div>
+            <div class="pva-row"><span class="pva-key">Pace target</span><span class="pva-val">${sess.p}/km</span></div>
+            <div class="pva-row"><span class="pva-key">Tipe</span><span class="pva-val">${TYPE_ICON[sess.type]} ${sess.type}</span></div>
+          </div>
+        </div>
+        <div class="pva-box ${actualBoxClass}">
+          <div class="pva-label">✅ Actual</div>
+          <div class="pva-stat">
+            <div class="pva-row"><span class="pva-key">Jarak</span><span class="pva-val">${actual.km} km <span style="font-size:10px;font-weight:600">${kmDiff>=0?'+':''}${kmDiff.toFixed(1)}</span></span></div>
+            <div class="pva-row"><span class="pva-key">Pace</span><span class="pva-val">${actual.p}/km <span style="font-size:10px;font-weight:600">${paceDiff>0?'⚡faster':paceDiff<-15?'🐢slower':''}</span></span></div>
+            <div class="pva-row"><span class="pva-key">Durasi</span><span class="pva-val">${actual.min} mnt</span></div>
+            ${actual.hr?`<div class="pva-row"><span class="pva-key">HR</span><span class="pva-val">${actual.hr} bpm</span></div>`:''}
+          </div>
+        </div>
+      </div>
+      <div class="pva-verdict ${verdictClass}">${verdictText}</div>
+    </div>`;
+  }
+
   el.innerHTML=`<div class="si" onclick="showWorkoutModal('${ds}')">
     <div class="si-icon" style="background:${bg}">${TYPE_ICON[sess.type]||'🏃'}</div>
     <div class="si-info">
@@ -734,12 +898,13 @@ function renderSchedContent(){
       <div class="si-det">Pace target ${sess.p}/km · Minggu ${sess.w}</div>
       <div style="margin-top:5px;display:flex;gap:6px">
         ${isToday?'<span class="badge b-sky">Hari ini</span>':''}
-        ${isDone?'<span class="badge b-green">✓ Sudah tercatat</span>':''}
+        ${isDone?'<span class="badge b-green">✓ Sudah tercatat</span>':'<span class="badge b-gray">Belum ada data</span>'}
       </div>
     </div>
     <div style="text-align:right"><div style="font-size:15px;font-weight:800;color:${col}">${sess.k}km</div><div style="color:var(--g300);font-size:18px">›</div></div>
   </div>
-  <div style="padding:12px 20px">
+  ${pvaHtml}
+  <div style="padding:${actual?'4px':'12px'} 20px 12px">
     <div class="tip"><div class="tip-t">💡 Tips</div><div class="tip-b">${sess.tip||TYPE_TIPS[sess.type]||''}</div></div>
   </div>`;
 }
@@ -849,9 +1014,12 @@ function renderProfile(){
   <div class="sl">Sync Data Strava</div>
   <div class="card"><div class="cb">
     <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--g100)"><span style="font-size:14px;color:var(--g500)">Strava base</span><span style="font-size:14px;font-weight:700">56 sesi · 345.8 km</span></div>
+    <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--g100)"><span style="font-size:14px;color:var(--g500)">☁️ Cloud (Supabase)</span><span style="font-size:14px;font-weight:700;color:var(--green)">${APP.importedLogs.length} sesi tersync</span></div>
     <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--g100)"><span style="font-size:14px;color:var(--g500)">Last sync CSV</span><span style="font-size:14px;font-weight:700">${lastSync}</span></div>
-    <div style="display:flex;justify-content:space-between;padding:6px 0"><span style="font-size:14px;color:var(--g500)">Sesi CSV</span><span style="font-size:14px;font-weight:700">${APP.importedLogs.length} sesi</span></div>
-    <div style="margin-top:12px"><button class="btn btn-orange" onclick="showScreen('log');setTimeout(openImportModal,200)">⬆️ Upload CSV Terbaru</button></div>
+    <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
+      <button class="btn btn-sky" onclick="loadLogsFromSupabase().then(()=>{renderProfile();renderLog();renderToday();})">☁️ Refresh dari Cloud</button>
+      <button class="btn btn-orange" onclick="showScreen('log');setTimeout(openImportModal,200)">⬆️ Upload CSV Terbaru</button>
+    </div>
   </div></div>
   <div class="sl">Cara Sync</div>
   <div class="card"><div class="cb" style="font-size:13px;color:var(--g700);line-height:1.9">
@@ -956,6 +1124,8 @@ function confirmImport(){
   closeModal('import-modal');
   showToast(`✅ ${pendingImport.length} sesi diimport!`);
   renderToday(); renderLog();
+  // Sync to Supabase cloud
+  saveLogsToSupabase(pendingImport);
 }
 
 // ============================================================

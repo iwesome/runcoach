@@ -1054,6 +1054,33 @@ function renderProgress(){
     <div class="pb"><div class="pb-l">❤️ HR rata-rata</div><div class="pb-v">${avgHR}</div><div class="pb-s">bpm</div></div>
     <div class="pb"><div class="pb-l">📅 Minggu terbaik</div><div class="pb-v">${bestWeekKm}</div><div class="pb-s">km</div></div>
   </div>`;
+  // Race yang sudah diikuti — detect dari keyword "Event Race" di name
+  const races = allLogs().filter(l=>l.n && l.n.toLowerCase().includes('event race'))
+    .sort((a,b)=>b.d.localeCompare(a.d));
+
+  if(races.length){
+    html += `<div class="sl">Race yang Sudah Diikuti</div>`;
+    races.forEach(r=>{
+      const dateParts = r.d.split('-');
+      const dateObj = new Date(r.d);
+      const dateStr = dateObj.toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'});
+      const raceName = r.n.replace(/\s*-\s*Event Race/i,'').trim();
+      const medal = parseFloat(r.km) >= 40 ? '🥇' : parseFloat(r.km) >= 20 ? '🥈' : '🥉';
+      html += `<div style="margin:0 16px 10px;background:var(--greenlt);border:1.5px solid var(--green);border-radius:16px;padding:14px 16px;display:flex;align-items:center;gap:12px">
+        <div style="font-size:28px">${medal}</div>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:800;color:var(--g900)">${raceName}</div>
+          <div style="font-size:12px;color:var(--g500);margin-top:2px">${dateStr}</div>
+          <div style="font-size:12px;color:var(--g600);margin-top:4px;display:flex;gap:10px">
+            <span>📏 ${r.km} km</span>
+            <span>⚡ pace ${r.p}/km</span>
+            ${r.hr ? `<span>❤️ HR ${r.hr}</span>` : ''}
+          </div>
+        </div>
+      </div>`;
+    });
+  }
+
   document.getElementById('prog-content').innerHTML=html;
 }
 

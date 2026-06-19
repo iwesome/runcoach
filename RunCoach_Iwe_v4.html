@@ -402,8 +402,75 @@ function saveApp(){
 }
 loadApp();
 
-// Load from Supabase on startup (async, non-blocking)
-loadLogsFromSupabase();
+// ============================================================
+// GOOGLE SHEET AUTO SYNC
+// ============================================================
+const GSHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTp3UiqXvUOa1KzlLoBnQZ7G1IwbddQZlzQ3WjeIryxP85LOFYGxbJoNqluKPBuQbV5rzAmoBZo4tLy/pub?gid=0&single=true&output=csv';
+
+async function syncFromGSheet(){
+  try{
+    showSyncStatus('⏳ Sync data Strava...');
+    const res = await fetch(GSHEET_CSV_URL);
+    if(!res.ok) throw new Error('Fetch failed');
+    const text = await res.text();
+    const logs = parseCSVtoLogs(text);
+    if(!logs.length) throw new Error('No data');
+    APP.importedLogs = logs;
+    saveApp();
+    // Also save to Supabase for cross-device
+    await saveLogsToSupabase(logs);
+    showSyncStatus(`✅ ${logs.length} sesi tersync dari Strava!`, true);
+    renderToday(); renderLog();
+  }catch(e){
+    // Fallback: load from Supabase
+    await loadLogsFromSupabase();
+  }
+}
+
+function parseCSVtoLogs(text){
+  const lines = text.trim().split('\n');
+  if(lines.length < 2) return [];
+  const header = lines[0].split(',').map(h=>h.trim().replace(/"/g,'').toLowerCase());
+  const col = name => header.indexOf(name);
+  const iDate=col('date'),iName=col('name'),iType=col('type');
+  const iDist=col('distance_km')||col('distance'),iMin=col('moving_time_min')||col('moving_time');
+  const iPace=col('avg_pace'),iHR=col('avg_hr'),iCal=col('calories')||col('calo');
+  if(iDate<0||iDist<0) return [];
+  const runs=[];
+  for(let i=1;i<lines.length;i++){
+    const cols = lines[i].split(',').map(c=>c.trim().replace(/"/g,''));
+    if(!cols[iDate]) continue;
+    const type = iType>=0 ? cols[iType] : '';
+    if(type && type!=='Run') continue;
+    const distRaw = parseFloat(cols[iDist]||0);
+    const dist = distRaw > 100 ? (distRaw/1000).toFixed(2) : distRaw.toFixed(2); // handle meters vs km
+    const minRaw = parseFloat(cols[iMin]||0);
+    const min = minRaw > 1000 ? Math.round(minRaw/60) : Math.round(minRaw); // handle seconds vs minutes
+    // Calculate pace if not provided
+    let pace = iPace>=0 ? cols[iPace] : '—';
+    if((!pace||pace==='—'||pace==='0:00') && dist>0 && min>0){
+      const paceSec = (min*60)/parseFloat(dist);
+      const pm = Math.floor(paceSec/60);
+      const ps = Math.round(paceSec%60).toString().padStart(2,'0');
+      pace = pm+':'+ps;
+    }
+    runs.push({
+      d: cols[iDate].slice(0,10),
+      n: iName>=0 ? cols[iName] : 'Lari',
+      km: dist,
+      min: min,
+      p: pace,
+      hr: iHR>=0 ? parseInt(cols[iHR])||0 : 0,
+      cal: iCal>=0 ? parseInt(cols[iCal])||0 : 0,
+      src: 'gsheet',
+      _syncDate: new Date().toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'})
+    });
+  }
+  return runs;
+}
+
+// Auto sync on startup
+syncFromGSheet();
 
 // ============================================================
 // COMPUTED FITNESS FROM HISTORY
@@ -1022,8 +1089,9 @@ function renderProfile(){
     <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--g100)"><span style="font-size:14px;color:var(--g500)">☁️ Cloud (Supabase)</span><span style="font-size:14px;font-weight:700;color:var(--green)">${APP.importedLogs.length} sesi tersync</span></div>
     <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--g100)"><span style="font-size:14px;color:var(--g500)">Last sync CSV</span><span style="font-size:14px;font-weight:700">${lastSync}</span></div>
     <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
+      <button class="btn btn-green" onclick="syncFromGSheet().then(()=>{renderProfile();})">🔄 Sync Sekarang dari Strava</button>
       <button class="btn btn-sky" onclick="loadLogsFromSupabase().then(()=>{renderProfile();renderLog();renderToday();})">☁️ Refresh dari Cloud</button>
-      <button class="btn btn-orange" onclick="showScreen('log');setTimeout(openImportModal,200)">⬆️ Upload CSV Terbaru</button>
+      <button class="btn btn-orange" onclick="showScreen('log');setTimeout(openImportModal,200)">⬆️ Upload CSV Manual</button>
     </div>
   </div></div>
   <div class="sl">Cara Sync</div>

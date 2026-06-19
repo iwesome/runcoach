@@ -342,12 +342,17 @@ async function saveLogsToSupabase(logs){
       d:l.d, n:l.n, km:l.km, min:l.min, p:l.p,
       hr:l.hr||0, cal:l.cal||0, src:l.src||'csv', sync_date:l._syncDate||''
     }));
-    // Upsert — conflict on (user_id, d) → update
-    await sbFetch('run_logs', {
-      method:'POST',
-      body: JSON.stringify(rows),
-      headers:{...SB_HEADERS,'Prefer':'resolution=merge-duplicates,return=minimal','Content-Type':'application/json'}
+    // Delete then re-insert (avoid 409 conflict)
+    await fetch(SB_URL+'/rest/v1/run_logs?user_id=eq.'+SB_USER, {
+      method: 'DELETE',
+      headers: SB_HEADERS
     });
+    const insertRes = await fetch(SB_URL+'/rest/v1/run_logs', {
+      method: 'POST',
+      headers: {...SB_HEADERS,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body: JSON.stringify(rows)
+    });
+    if(!insertRes.ok) throw new Error('Insert failed: '+insertRes.status);
     showSyncStatus('✅ Tersimpan di cloud!', true);
   }catch(e){
     showSyncStatus('⚠️ Gagal sync cloud — tersimpan lokal', false, true);

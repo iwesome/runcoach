@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -13,13 +13,13 @@
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;background:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--g900);overscroll-behavior:none}
 .app{display:flex;flex-direction:column;height:100vh;height:100dvh;max-width:430px;margin:0 auto;background:#fff;position:relative;overflow:hidden}
-.screen{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-bottom:calc(72px + env(safe-area-inset-bottom,0px));display:none}
+.screen{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-bottom:calc(72px + env(safe-area-inset-bottom,0px));display:none;padding-top:0}
 .screen.active{display:block}
 .navbar{position:absolute;bottom:0;left:0;right:0;height:calc(64px + env(safe-area-inset-bottom,0px));background:#fff;border-top:1px solid var(--g200);display:flex;align-items:flex-start;padding-top:8px;padding-bottom:env(safe-area-inset-bottom,0px);z-index:100}
 .nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:4px 0;border:none;background:none}
 .nav-icon{font-size:22px;color:var(--g300)}.nav-label{font-size:10px;color:var(--g400);font-weight:500}
 .nav-item.active .nav-icon,.nav-item.active .nav-label{color:var(--sky)}
-.ph{padding:calc(16px + env(safe-area-inset-top,0px)) 20px 12px;background:#fff;border-bottom:1px solid var(--g100)}
+.ph{padding:calc(20px + env(safe-area-inset-top,44px)) 20px 12px;background:#fff;border-bottom:1px solid var(--g100)}
 .pt{font-size:22px;font-weight:800;color:var(--g900)}.ps{font-size:13px;color:var(--g500);margin-top:2px}
 .card{background:#fff;border-radius:16px;border:1px solid var(--g200);margin:0 16px 12px;overflow:hidden}
 .cb{padding:16px}
@@ -146,6 +146,11 @@ html,body{height:100%;background:#fff;font-family:-apple-system,BlinkMacSystemFo
 .pva-verdict.ok{background:var(--skylt);color:var(--sky2)}
 .pva-verdict.miss{background:var(--orangelt);color:#C2410C}
 .pva-verdict.over{background:var(--purplelt);color:#6D28D9}
+/* DRAG AND DROP */
+.dc{transition:background .15s}
+.dc.drag-over{background:var(--skylt);border-radius:8px;border-bottom-color:var(--sky)!important}
+.sched-drag-handle{cursor:grab;font-size:16px;color:var(--g300);padding:0 4px}
+.sched-drag-handle:active{cursor:grabbing}
 </style>
 </head>
 <body>
@@ -155,8 +160,8 @@ html,body{height:100%;background:#fff;font-family:-apple-system,BlinkMacSystemFo
   <div class="screen" id="sc-schedule">
     <div class="ph">
       <div style="display:flex;justify-content:space-between;align-items:center">
-        <div><div class="pt">Jadwal Latihan</div><div class="ps" id="sched-sub">Loading...</div></div>
-        <button class="btn btn-purple" style="width:auto;padding:8px 12px;font-size:12px;border-radius:10px" onclick="openTargetModal()">🎯 Ganti Target</button>
+        <div><div class="pt">Training Schedule</div><div class="ps" id="sched-sub">Loading...</div></div>
+        <button class="btn btn-purple" style="width:auto;padding:8px 12px;font-size:12px;border-radius:10px" onclick="openTargetModal()">🎯 Change Target</button>
       </div>
     </div>
     <div class="wn"><button class="wn-btn" onclick="chWeek(-1)">‹</button><div class="wn-t" id="week-range"></div><button class="wn-btn" onclick="chWeek(1)">›</button></div>
@@ -166,26 +171,26 @@ html,body{height:100%;background:#fff;font-family:-apple-system,BlinkMacSystemFo
   <div class="screen" id="sc-log">
     <div class="ph">
       <div style="display:flex;justify-content:space-between;align-items:center">
-        <div><div class="pt">Riwayat Lari</div><div class="ps" id="log-sub">Loading...</div></div>
+        <div><div class="pt">Run History</div><div class="ps" id="log-sub">Loading...</div></div>
         <button class="btn btn-orange" style="width:auto;padding:10px 14px;font-size:13px;border-radius:10px" onclick="openImportModal()">⬆️ Upload CSV</button>
       </div>
     </div>
     <div id="log-content"></div>
   </div>
   <div class="screen" id="sc-progress">
-    <div class="ph"><div class="pt">Progress</div><div class="ps">Analisis dari data Strava kamu</div></div>
+    <div class="ph"><div class="pt">Progress</div><div class="ps">Analysis from your Strava data</div></div>
     <div id="prog-content"></div>
   </div>
   <div class="screen" id="sc-profile">
-    <div class="ph"><div class="pt">Profil & Target</div></div>
+    <div class="ph"><div class="pt">Profilee & Settings</div></div>
     <div id="prof-content"></div>
   </div>
   <div class="navbar">
-    <button class="nav-item active" id="nav-today" onclick="showScreen('today')"><span class="nav-icon">🏠</span><span class="nav-label">Hari Ini</span></button>
-    <button class="nav-item" id="nav-schedule" onclick="showScreen('schedule')"><span class="nav-icon">📅</span><span class="nav-label">Jadwal</span></button>
+    <button class="nav-item active" id="nav-today" onclick="showScreen('today')"><span class="nav-icon">🏠</span><span class="nav-label">Today</span></button>
+    <button class="nav-item" id="nav-schedule" onclick="showScreen('schedule')"><span class="nav-icon">📅</span><span class="nav-label">Schedule</span></button>
     <button class="nav-item" id="nav-log" onclick="showScreen('log')"><span class="nav-icon">📋</span><span class="nav-label">Log</span></button>
     <button class="nav-item" id="nav-progress" onclick="showScreen('progress')"><span class="nav-icon">📊</span><span class="nav-label">Progress</span></button>
-    <button class="nav-item" id="nav-profile" onclick="showScreen('profile')"><span class="nav-icon">👤</span><span class="nav-label">Profil</span></button>
+    <button class="nav-item" id="nav-profile" onclick="showScreen('profile')"><span class="nav-icon">👤</span><span class="nav-label">Profile</span></button>
   </div>
 </div>
 
@@ -193,11 +198,11 @@ html,body{height:100%;background:#fff;font-family:-apple-system,BlinkMacSystemFo
 <div class="mo" id="target-modal">
   <div class="modal">
     <div class="mh"></div>
-    <div class="mt">🎯 Set Target Baru</div>
-    <div class="mt-sub">Jadwal akan di-generate ulang otomatis berdasarkan kondisi lari kamu saat ini.</div>
+    <div class="mt">🎯 Set New Target</div>
+    <div class="mt-sub">Schedule akan di-generate ulang otomatis berdasarkan kondisi lari kamu saat ini.</div>
     <div id="fitness-snapshot"></div>
     <div class="fg">
-      <label class="fl">Jenis Target</label>
+      <label class="fl">Target Type</label>
       <div id="target-opts">
         <div class="target-opt selected" data-val="5k" onclick="selectTarget(this)"><div class="target-opt-title">🏃 5K</div><div class="target-opt-sub">Cocok jika pace rata-rata &gt; 8:00/km</div></div>
         <div class="target-opt" data-val="10k" onclick="selectTarget(this)"><div class="target-opt-title">🏃 10K</div><div class="target-opt-sub">Base mileage 25–40 km/minggu</div></div>
@@ -208,8 +213,8 @@ html,body{height:100%;background:#fff;font-family:-apple-system,BlinkMacSystemFo
       </div>
     </div>
     <div class="fr">
-      <div class="fg"><label class="fl">Nama race (opsional)</label><input class="fi" type="text" id="t_race_name" placeholder="Jakarta Marathon"></div>
-      <div class="fg"><label class="fl">Tanggal race</label><input class="fi" type="date" id="t_race_date"></div>
+      <div class="fg"><label class="fl">Race name (optional)</label><input class="fi" type="text" id="t_race_name" placeholder="Jakarta Marathon"></div>
+      <div class="fg"><label class="fl">Race date</label><input class="fi" type="date" id="t_race_date"></div>
     </div>
     <div class="fg">
       <label class="fl">Hari latihan per minggu</label>
@@ -224,7 +229,7 @@ html,body{height:100%;background:#fff;font-family:-apple-system,BlinkMacSystemFo
       ⚠️ Plan lama akan dihapus dan diganti total dengan plan baru.
     </div>
     <div style="display:flex;gap:8px">
-      <button class="btn btn-gray" style="flex:1" onclick="closeModal('target-modal')">Batal</button>
+      <button class="btn btn-gray" style="flex:1" onclick="closeModal('target-modal')">Cancel</button>
       <button class="btn btn-purple" style="flex:2" onclick="generateNewPlan()">Generate Plan Baru 🚀</button>
     </div>
   </div>
@@ -254,7 +259,7 @@ html,body{height:100%;background:#fff;font-family:-apple-system,BlinkMacSystemFo
       <div style="margin-top:10px;background:var(--skylt);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--sky2)" id="import-info"></div>
     </div>
     <div style="display:flex;gap:8px;margin-top:14px">
-      <button class="btn btn-gray" style="flex:1" onclick="closeModal('import-modal')">Batal</button>
+      <button class="btn btn-gray" style="flex:1" onclick="closeModal('import-modal')">Cancel</button>
       <button class="btn btn-green" style="flex:2;display:none" id="import-btn" onclick="confirmImport()">Import Data ✅</button>
     </div>
   </div>
@@ -279,15 +284,29 @@ const ICS_PLAN = [{"t":"Easy Run 6.5km","d":"2026-06-23","k":6.5,"p":"9:30","w":
 // ============================================================
 // CONSTANTS
 // ============================================================
-const MONTHS = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
-const DAYS_S = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
-const DAYS_F = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+// Week starts Monday (ISO week)
+function getMonWeekStart(date, offsetWeeks) {
+  const d = new Date(date); d.setHours(0,0,0,0);
+  const day = d.getDay(); // 0=Sun,1=Mon,...,6=Sat
+  const diffToMon = (day === 0) ? -6 : 1 - day; // go back to Monday
+  d.setDate(d.getDate() + diffToMon + (offsetWeeks||0)*7);
+  return d;
+}
+function getDayIndex(date) {
+  // Returns 0=Mon...6=Sun
+  const day = new Date(date).getDay();
+  return day === 0 ? 6 : day - 1;
+}
+const DAYS_S = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const DAYS_F = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 const TYPE_ICON = {easy:'🏃',tempo:'⚡',long:'🌅',interval:'💥',race:'🏅'};
 const TYPE_COLOR = {easy:'var(--sky)',tempo:'var(--orange)',long:'var(--purple)',interval:'var(--red)',race:'var(--green)'};
 const TYPE_BG = {easy:'var(--skylt)',tempo:'var(--orangelt)',long:'var(--purplelt)',interval:'var(--redlt)',race:'var(--greenlt)'};
 const TYPE_TIPS = {
   easy:'Lari di zona 2 — santai sampai bisa ngobrol kalimat penuh. Ini sesi paling penting untuk bangun aerobik base.',
-  tempo:'Tempo = "comfortably hard". Napas terasa berat tapi masih terkontrol. Jangan lebih cepat dari target.',
+  tempo:'Tempo = "comfortably hard". Napas terasa berat tapi masih terkontrol. Jangan lebih cepat from target.',
   long:'Long run prioritasnya SELESAI, bukan cepat. Pace paling santai. Ini sesi utama tiap minggu.',
   interval:'Pace maksimal saat hard effort, recovery benar-benar pelan. Konsistensi antar set lebih penting dari kecepatan.',
   race:'Race day! Taper sudah selesai. Percaya prosesnya dan nikmati prosesnya.'
@@ -320,23 +339,23 @@ async function sbFetch(path, opts={}){
 
 async function loadLogsFromSupabase(){
   try{
-    showSyncStatus('⏳ Memuat data dari cloud...');
+    showSyncStatus('⏳ Loading from cloud...');
     const data = await sbFetch(`run_logs?user_id=eq.${SB_USER}&order=d.desc`);
     APP.importedLogs = data.map(r=>({
       d:r.d, n:r.n, km:r.km, min:r.min, p:r.p, hr:r.hr||0, cal:r.cal||0,
       src:r.src||'csv', _syncDate:r.sync_date||''
     }));
     saveApp();
-    showSyncStatus('☁️ Data cloud dimuat: '+APP.importedLogs.length+' sesi', true);
+    showSyncStatus('☁️ Cloud data loaded: '+APP.importedLogs.length+' sesi', true);
     renderToday(); renderLog();
   }catch(e){
-    showSyncStatus('⚠️ Offline — pakai data lokal', false, true);
+    showSyncStatus('⚠️ Offline — using local data', false, true);
   }
 }
 
 async function saveLogsToSupabase(logs){
   try{
-    showSyncStatus('⏫ Menyimpan ke cloud...');
+    showSyncStatus('⏫ Saving to cloud...');
     const rows = logs.map(l=>({
       user_id: SB_USER,
       d:l.d, n:l.n, km:l.km, min:l.min, p:l.p,
@@ -353,9 +372,9 @@ async function saveLogsToSupabase(logs){
       body: JSON.stringify(rows)
     });
     if(!insertRes.ok) throw new Error('Insert failed: '+insertRes.status);
-    showSyncStatus('✅ Tersimpan di cloud!', true);
+    showSyncStatus('✅ Saved to cloud!', true);
   }catch(e){
-    showSyncStatus('⚠️ Gagal sync cloud — tersimpan lokal', false, true);
+    showSyncStatus('⚠️ Cloud sync failed — saved locally', false, true);
   }
 }
 
@@ -381,9 +400,11 @@ let APP = {
   target: null,
   importedLogs: [],
   weekOffset: 0,
-  selDay: new Date().getDay()
+  selDay: getDayIndex(new Date()),
+  profile: { rhr: 50, maxHR: 190 }
 };
 let pendingImport = [];
+let dragFromDate = null; // Drag-and-Drop state
 let pendingTargetVal = '5k';
 
 function loadApp(){
@@ -396,6 +417,7 @@ function loadApp(){
   }catch(e){}
   if(!APP.plan) APP.plan = ICS_PLAN;
   if(!APP.target) APP.target = {type:'35k', raceName:'35K Race Day', raceDate:'2027-05-27', days:4};
+  if(!APP.profile) APP.profile = { rhr: 50, maxHR: 190 };
 }
 function saveApp(){
   try{ localStorage.setItem('rc_v3', JSON.stringify(APP)); }catch(e){}
@@ -409,7 +431,7 @@ const GSHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTp3UiqX
 
 async function syncFromGSheet(){
   try{
-    showSyncStatus('⏳ Sync data Strava...');
+    showSyncStatus('⏳ Syncing Strava data...');
     const res = await fetch(GSHEET_CSV_URL);
     if(!res.ok) throw new Error('Fetch failed');
     const text = await res.text();
@@ -419,7 +441,7 @@ async function syncFromGSheet(){
     saveApp();
     // Also save to Supabase for cross-device
     await saveLogsToSupabase(logs);
-    showSyncStatus(`✅ ${logs.length} sesi tersync dari Strava!`, true);
+    showSyncStatus(`✅ ${logs.length} sessions synced from Strava!`, true);
     renderToday(); renderLog();
   }catch(e){
     // Fallback: load from Supabase
@@ -521,7 +543,7 @@ function generatePlan(target, fitness){
   const baseLong = Math.max(fitness.longRun * 0.9, goalDist * 0.4);
   const baseEasy = Math.max(fitness.avgKm * 0.85, 4);
 
-  // Pace targets per type (based on actual fitness)
+  // Target paces per type (based on actual fitness)
   const easyPace = secToPace(Math.round(fitness.avgPaceSec * 1.05));
   const tempoPace = secToPace(Math.round(fitness.avgPaceSec * 0.88));
   const longPace  = secToPace(Math.round(fitness.avgPaceSec * 1.1));
@@ -575,6 +597,13 @@ function generatePlan(target, fitness){
         pace = tempoPace;
         title = `Tempo Run ${km}km`;
         tip = `Pace ${pace}/km — "comfortably hard". HR ~${Math.round(fitness.avgHR * 0.95)} bpm.`;
+        // Structured workout blocks
+        const tempoKm = Math.max(1.5, Math.round((km-3)*10)/10);
+        var blocks = [
+          {type:'Warm-up', icon:'🚶', min:10, desc:`Easy jog @ ${secToPace(Math.round(fitness.avgPaceSec*1.15))}/km`},
+          {type:'Tempo', icon:'⚡', km:tempoKm, pace:pace, desc:`Hold ${pace}/km — comfortably hard`},
+          {type:'Cool-down', icon:'🧊', min:10, desc:`Easy jog @ ${secToPace(Math.round(fitness.avgPaceSec*1.15))}/km`}
+        ];
       } else {
         km = Math.round(Math.min(baseLong * clampedScale, goalDist * (isTaper?0.6:0.85)) * 10)/10;
         pace = longPace;
@@ -583,7 +612,9 @@ function generatePlan(target, fitness){
       }
 
       km = Math.max(km, 2);
-      plan.push({d:ds, t:title, k:km, p:pace, type:sessType, w:w+1, tip});
+      const sessObj = {d:ds, t:title, k:km, p:pace, type:sessType, w:w+1, tip};
+      if(typeof blocks !== 'undefined') { sessObj.blocks = blocks; blocks = undefined; }
+      plan.push(sessObj);
     }
   }
   return plan;
@@ -599,11 +630,11 @@ function openTargetModal(){
     <div class="fitness-card">
       <div style="font-size:12px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">📊 Kondisi saat ini (dari ${fit.totalRuns} sesi lari)</div>
       <div class="fitness-row"><span class="fitness-label">Pace rata-rata</span><span class="fitness-val">${fit.avgPace}/km</span></div>
-      <div class="fitness-row"><span class="fitness-label">Pace terbaik</span><span class="fitness-val">${fit.bestPace}/km</span></div>
-      <div class="fitness-row"><span class="fitness-label">HR rata-rata</span><span class="fitness-val">${fit.avgHR} bpm</span></div>
-      <div class="fitness-row"><span class="fitness-label">Long run terpanjang</span><span class="fitness-val">${fit.longRun} km</span></div>
+      <div class="fitness-row"><span class="fitness-label">Best pace</span><span class="fitness-val">${fit.bestPace}/km</span></div>
+      <div class="fitness-row"><span class="fitness-label">Avg HR</span><span class="fitness-val">${fit.avgHR} bpm</span></div>
+      <div class="fitness-row"><span class="fitness-label">Longest run</span><span class="fitness-val">${fit.longRun} km</span></div>
       <div class="fitness-row"><span class="fitness-label">Rata-rata km/sesi</span><span class="fitness-val">${fit.avgKm} km</span></div>
-      <div class="fitness-row"><span class="fitness-label">Rata-rata km/minggu</span><span class="fitness-val">${fit.avgWeeklyKm} km</span></div>
+      <div class="fitness-row"><span class="fitness-label">Avg km/week</span><span class="fitness-val">${fit.avgWeeklyKm} km</span></div>
     </div>`;
 
   // Pre-fill current target
@@ -644,7 +675,7 @@ function updatePlanPreview(){
     const wSess = runSessions.filter(p=>p.w===w);
     const wKm = wSess.reduce((a,p)=>a+p.k,0).toFixed(0);
     html += `<div class="plan-preview-week">
-      <div class="ppw-header"><span class="ppw-title">Minggu ${w}</span><span class="ppw-km">${wKm} km</span></div>
+      <div class="ppw-header"><span class="ppw-title">Week ${w}</span><span class="ppw-km">${wKm} km</span></div>
       <div class="ppw-sessions">
         ${wSess.map(s=>`<span class="ppw-sess" style="background:${TYPE_BG[s.type]};color:${TYPE_COLOR[s.type]}">${TYPE_ICON[s.type]} ${s.t.split(' ')[0]+' '+s.t.split(' ')[1]} ${s.k}km</span>`).join('')}
       </div>
@@ -673,7 +704,7 @@ function generateNewPlan(){
   APP.plan = newPlan;
   APP.target = target;
   APP.weekOffset = 0;
-  APP.selDay = new Date().getDay();
+  APP.selDay = getDayIndex(new Date());
   saveApp();
 
   closeModal('target-modal');
@@ -700,10 +731,40 @@ function calcStreak(logs){
   for(let i=0;i<90;i++){const d=check.toISOString().slice(0,10);if(dates.includes(d)){s++;}else if(d!==today) break;check.setDate(check.getDate()-1);}
   return s;
 }
+// ── TRIMP (Karvonen Formula) ─────────────────────────────────
+function calculateTRIMP(durationMin, avgHR, maxHR, rhr) {
+  if (!avgHR || avgHR <= rhr) return 0;
+  const hrr = maxHR - rhr;
+  const intensityRatio = (avgHR - rhr) / hrr;
+  let weight = 1;
+  if (intensityRatio >= 0.90) weight = 5;
+  else if (intensityRatio >= 0.80) weight = 4;
+  else if (intensityRatio >= 0.70) weight = 3;
+  else if (intensityRatio >= 0.60) weight = 2;
+  return Math.round(durationMin * weight);
+}
+
+function getWeeklyStats(logs, n) {
+  const stats = [];
+  const now = new Date(); now.setHours(0,0,0,0);
+  const profile = APP.profile || { rhr: 50, maxHR: 190 };
+  for (let i = n-1; i >= 0; i--) {
+    const ws = getMonWeekStart(now, -i);
+    const we = new Date(ws); we.setDate(ws.getDate()+6);
+    const wLogs = logs.filter(l => { const d=new Date(l.d); return d>=ws && d<=we; });
+    const km = wLogs.reduce((s,l) => s+parseFloat(l.km||0), 0);
+    const trimpScores = wLogs.map(l => calculateTRIMP(parseInt(l.min)||0, parseInt(l.hr)||0, profile.maxHR, profile.rhr)).filter(t=>t>0);
+    const trimp = trimpScores.length ? Math.round(trimpScores.reduce((a,b)=>a+b,0) / trimpScores.length) : 0;
+    const label = 'W'+(n-i);
+    stats.push({ km: Math.round(km*10)/10, trimp, label, start: ws.toISOString().slice(0,10) });
+  }
+  return stats;
+}
+
 function getWeeklyKm(logs,n){
   const res=[];const now=new Date();
   for(let i=n-1;i>=0;i--){
-    const ws=new Date(now);ws.setDate(now.getDate()-now.getDay()-i*7);ws.setHours(0,0,0,0);
+    const ws=getMonWeekStart(now,-i); ws.setHours(0,0,0,0);
     const we=new Date(ws);we.setDate(ws.getDate()+7);
     const km=logs.filter(l=>{const d=new Date(l.d+'T00:00:00');return d>=ws&&d<we}).reduce((a,l)=>a+parseFloat(l.km||0),0);
     res.push({km:Math.round(km*10)/10,label:`W${n-i}`});
@@ -723,7 +784,7 @@ function showScreen(name){
   if(name==='schedule') renderSchedule();
   if(name==='log') renderLog();
   if(name==='progress') renderProgress();
-  if(name==='profile') renderProfile();
+  if(name==='profile') renderProfilee();
 }
 
 // ============================================================
@@ -787,7 +848,7 @@ function renderToday(){
       <div class="rc-name">🏅 ${target.raceName||target.type.toUpperCase()}</div>
       <div class="rc-date">${raceDate.toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'})}</div>
       <div class="rc-countdown">
-        <div class="rc-item"><div class="rc-num">${weeksToRace}</div><div class="rc-lbl">Minggu</div></div>
+        <div class="rc-item"><div class="rc-num">${weeksToRace}</div><div class="rc-lbl">Week</div></div>
         <div class="rc-item"><div class="rc-num">${daysRem}</div><div class="rc-lbl">Hari</div></div>
         <div class="rc-item"><div class="rc-num">${daysToRace}</div><div class="rc-lbl">Total hari</div></div>
       </div>
@@ -799,7 +860,7 @@ function renderToday(){
     html += `<div class="card"><div class="cb" style="text-align:center;padding:24px 16px">
       <div style="font-size:44px;margin-bottom:8px">✅</div>
       <div style="font-size:17px;font-weight:800;margin-bottom:4px">Sudah lari hari ini!</div>
-      <div style="font-size:13px;color:var(--g500)">${todayLog?todayLog.km+'km · '+todayLog.min+' mnt · '+todayLog.p+'/km':''}</div>
+      <div style="font-size:13px;color:var(--g500)">${todayLog?todayLog.km+'km · '+todayLog.min+' min · '+todayLog.p+'/km':''}</div>
     </div></div>`;
   } else if(sess && sess.type!=='rest'){
     const col = TYPE_COLOR[sess.type]||'var(--sky)';
@@ -820,7 +881,7 @@ function renderToday(){
   } else {
     html += `<div class="card"><div class="cb" style="background:var(--greenlt);border-radius:14px">
       <div style="font-size:32px;margin-bottom:6px">💤</div>
-      <div style="font-size:17px;font-weight:800;color:#166534;margin-bottom:4px">Hari Istirahat</div>
+      <div style="font-size:17px;font-weight:800;color:#166534;margin-bottom:4px">Rest Day</div>
       <div style="font-size:13px;color:#166534;line-height:1.5">${DAYS_F[now.getDay()]} bukan hari lari. Stretching ringan atau istirahat total.</div>
     </div></div>`;
   }
@@ -833,6 +894,46 @@ function renderToday(){
 // ============================================================
 // SCHEDULE
 // ============================================================
+// ── Drag-and-Drop helpers ────────────────────────────────────
+function onDayDragOver(e, dayIdx) {
+  e.preventDefault();
+  document.querySelectorAll('.dc').forEach(el => el.classList.remove('drag-over'));
+  const els = document.querySelectorAll('.dc');
+  if(els[dayIdx]) els[dayIdx].classList.add('drag-over');
+}
+function onDayDrop(e, dayIdx) {
+  e.preventDefault();
+  document.querySelectorAll('.dc').forEach(el => el.classList.remove('drag-over'));
+  if(!dragFromDate) return;
+  // Calculate target date
+  const now = new Date();
+  const ws = getMonWeekStart(now, APP.weekOffset);
+  const targetDt = new Date(ws); targetDt.setDate(ws.getDate() + dayIdx);
+  const targetDate = targetDt.toISOString().slice(0,10);
+  if(targetDate === dragFromDate) { dragFromDate = null; return; }
+  // Check if target already has a session
+  const plan = APP.plan || ICS_PLAN;
+  const targetSess = plan.find(p => p.d === targetDate);
+  const fromSess = plan.find(p => p.d === dragFromDate);
+  if(!fromSess) { dragFromDate = null; return; }
+  if(targetSess && targetSess.type !== 'rest') {
+    // Swap dates
+    const tmpDate = fromSess.d;
+    fromSess.d = targetSess.d;
+    targetSess.d = tmpDate;
+  } else if(targetSess) {
+    // Move to rest day — update date
+    fromSess.d = targetDate;
+    targetSess.d = dragFromDate; // swap rest
+  } else {
+    fromSess.d = targetDate;
+  }
+  dragFromDate = null;
+  saveApp();
+  renderSchedule();
+  showToast('✅ Session moved!');
+}
+
 function renderSchedule(){
   const plan = APP.plan||ICS_PLAN;
   const target = APP.target||{type:'35k'};
@@ -842,15 +943,15 @@ function renderSchedule(){
 }
 
 function renderWeekRange(){
-  const now=new Date(); const ws=new Date(now);
-  ws.setDate(now.getDate()-now.getDay()+(APP.weekOffset*7));
+  const now=new Date();
+  const ws=getMonWeekStart(now, APP.weekOffset);
   const we=new Date(ws); we.setDate(ws.getDate()+6);
   document.getElementById('week-range').textContent=`${ws.getDate()} ${MONTHS[ws.getMonth()]} — ${we.getDate()} ${MONTHS[we.getMonth()]}`;
 }
 
 function renderDayStrip(){
-  const plan=APP.plan||ICS_PLAN; const now=new Date(); const ws=new Date(now);
-  ws.setDate(now.getDate()-now.getDay()+(APP.weekOffset*7));
+  const plan=APP.plan||ICS_PLAN; const now=new Date();
+  const ws=getMonWeekStart(now, APP.weekOffset);
   const logDates=new Set(allLogs().map(l=>l.d));
   let html='';
   for(let d=0;d<7;d++){
@@ -862,9 +963,13 @@ function renderDayStrip(){
     const sess=plan.find(p=>p.d===ds);
     const hasSess=sess&&sess.type!=='rest';
     const dotCls=isDone?'dot-done':hasSess?'dot-run':'dot-rest';
-    html+=`<div class="dc${isActive?' active':''}" onclick="selDay(${d})">
+    html+=`<div class="dc${isActive?' active':''}"
+      onclick="selDay(${d})"
+      ondragover="onDayDragOver(event,${d})"
+      ondrop="onDayDrop(event,${d})">
       <div class="dc-day">${DAYS_S[d]}</div>
-      <div class="dc-num" style="${isToday?'color:var(--sky);font-weight:900':''}">${dt.getDate()}</div>
+      <div class="dc-num" style="${isToday?'color:var(--sky);font-weight:900':''}${hasSess?' cursor:grab;':''}">
+        ${dt.getDate()}</div>
       <div class="dc-dot ${dotCls}"></div>
     </div>`;
   }
@@ -874,8 +979,8 @@ function renderDayStrip(){
 function selDay(d){APP.selDay=d;renderDayStrip();renderSchedContent();}
 
 function renderSchedContent(){
-  const plan=APP.plan||ICS_PLAN; const now=new Date(); const ws=new Date(now);
-  ws.setDate(now.getDate()-now.getDay()+(APP.weekOffset*7));
+  const plan=APP.plan||ICS_PLAN; const now=new Date();
+  const ws=getMonWeekStart(now, APP.weekOffset);
   const dt=new Date(ws); dt.setDate(ws.getDate()+APP.selDay);
   const ds=dt.toISOString().slice(0,10);
   const sess=plan.find(p=>p.d===ds);
@@ -886,21 +991,21 @@ function renderSchedContent(){
   if(!sess||sess.type==='rest'){
     // Rest day — still show actual if they ran
     if(actual){
-      el.innerHTML=`<div class="empty"><div class="empty-i">😮</div><div class="empty-t">Bonus Run!</div><div class="empty-s">Hari istirahat, tapi kamu tetap lari.</div></div>
+      el.innerHTML=`<div class="empty"><div class="empty-i">😮</div><div class="empty-t">Bonus Run!</div><div class="empty-s">Rest day, but you still ran!</div></div>
       <div class="pva-wrap">
-        <div class="pva-header">📊 Aktual</div>
+        <div class="pva-header">📊 Actual</div>
         <div class="pva-box actual" style="border-radius:12px;padding:14px">
           <div class="pva-label">Actual</div>
           <div class="pva-stat">
-            <div class="pva-row"><span class="pva-key">Jarak</span><span class="pva-val">${actual.km} km</span></div>
-            <div class="pva-row"><span class="pva-key">Durasi</span><span class="pva-val">${actual.min} mnt</span></div>
+            <div class="pva-row"><span class="pva-key">Distance</span><span class="pva-val">${actual.km} km</span></div>
+            <div class="pva-row"><span class="pva-key">Duration</span><span class="pva-val">${actual.min} min</span></div>
             <div class="pva-row"><span class="pva-key">Pace</span><span class="pva-val">${actual.p}/km</span></div>
             ${actual.hr?`<div class="pva-row"><span class="pva-key">HR</span><span class="pva-val">${actual.hr} bpm</span></div>`:''}
           </div>
         </div>
       </div>`;
     } else {
-      el.innerHTML=`<div class="empty"><div class="empty-i">💤</div><div class="empty-t">Hari Istirahat</div><div class="empty-s">Recovery aktif atau stretching.</div></div>`;
+      el.innerHTML=`<div class="empty"><div class="empty-i">💤</div><div class="empty-t">Rest Day</div><div class="empty-s">Active recovery or stretching.</div></div>`;
     }
     return;
   }
@@ -909,6 +1014,10 @@ function renderSchedContent(){
   // Plan vs Actual section
   let pvaHtml = '';
   if(actual){
+    const profile = APP.profile || {rhr:50, maxHR:190};
+    const dailyTrimp = calculateTRIMP(parseInt(actual.min)||0, parseInt(actual.hr)||0, profile.maxHR, profile.rhr);
+    const trimpPerSessLow=80, trimpPerSessHigh=180;
+    const trimpDayStatus = dailyTrimp>=trimpPerSessHigh?{lbl:'Heavy',col:'var(--orange)'}:dailyTrimp>=trimpPerSessLow?{lbl:'Optimal',col:'var(--green)'}:dailyTrimp>0?{lbl:'Light',col:'var(--sky)'}:{lbl:'No HR data',col:'var(--g400)'};
     const planKm = parseFloat(sess.k)||0;
     const actualKm = parseFloat(actual.km)||0;
     const kmDiff = actualKm - planKm;
@@ -925,15 +1034,15 @@ function renderSchedContent(){
     const isFaster = paceDiff > 15;
     const isOver = kmPct > 115;
     if(isOver && isFaster){
-      verdictClass='over'; verdictText=`🔥 Overachieved! +${kmDiff.toFixed(1)}km lebih dan pace lebih cepat dari plan. Pastikan recovery cukup ya!`;
+      verdictClass='over'; verdictText=`🔥 Overachieved! +${kmDiff.toFixed(1)}km extra and pace faster than plan. Make sure you recover well!`;
     } else if(kmOk && paceOk){
-      verdictClass='great'; verdictText=`✅ Mantap! Lari sesuai plan. ${Math.abs(kmDiff)<0.3?'Jarak spot on!':kmDiff>0?'+'+kmDiff.toFixed(1)+'km bonus':kmDiff.toFixed(1)+'km'}`;
+      verdictClass='great'; verdictText=`✅ Great! Lari on target. ${Math.abs(kmDiff)<0.3?'Distance spot on!':kmDiff>0?'+'+kmDiff.toFixed(1)+'km bonus':kmDiff.toFixed(1)+'km'}`;
     } else if(!kmOk && paceOk){
-      verdictClass='miss'; verdictText=`⚠️ Jarak kurang ${Math.abs(kmDiff).toFixed(1)}km dari target (${kmPct}%). Pace sudah oke. Besok coba kejar ya!`;
+      verdictClass='miss'; verdictText=`⚠️ Distance kurang ${Math.abs(kmDiff).toFixed(1)}km from target (${kmPct}%). Pace was good. Try to make it up tomorrow!`;
     } else if(kmOk && !paceOk){
-      verdictClass='ok'; verdictText=`🕐 Jarak tercapai tapi pace ${secToPace(Math.abs(paceDiff))} lebih lambat dari target. Wajar, jaga konsistensi.`;
+      verdictClass='ok'; verdictText=`🕐 Distance tercapai tapi pace ${secToPace(Math.abs(paceDiff))} lebih lambat from target. That's OK, stay consistent.`;
     } else {
-      verdictClass='miss'; verdictText=`⚠️ Jarak dan pace di bawah target. Cek kondisi tubuh — mungkin perlu lebih banyak recovery.`;
+      verdictClass='miss'; verdictText=`⚠️ Distance dan pace di bawah target. Check your body — may need more recovery.`;
     }
 
     const actualBoxClass = verdictClass==='great'||verdictClass==='over' ? 'actual great' : 'actual miss';
@@ -944,18 +1053,19 @@ function renderSchedContent(){
         <div class="pva-box plan">
           <div class="pva-label">📋 Plan</div>
           <div class="pva-stat">
-            <div class="pva-row"><span class="pva-key">Jarak</span><span class="pva-val">${sess.k} km</span></div>
-            <div class="pva-row"><span class="pva-key">Pace target</span><span class="pva-val">${sess.p}/km</span></div>
-            <div class="pva-row"><span class="pva-key">Tipe</span><span class="pva-val">${TYPE_ICON[sess.type]} ${sess.type}</span></div>
+            <div class="pva-row"><span class="pva-key">Distance</span><span class="pva-val">${sess.k} km</span></div>
+            <div class="pva-row"><span class="pva-key">Target pace</span><span class="pva-val">${sess.p}/km</span></div>
+            <div class="pva-row"><span class="pva-key">Type</span><span class="pva-val">${TYPE_ICON[sess.type]} ${sess.type}</span></div>
           </div>
         </div>
         <div class="pva-box ${actualBoxClass}">
           <div class="pva-label">✅ Actual</div>
           <div class="pva-stat">
-            <div class="pva-row"><span class="pva-key">Jarak</span><span class="pva-val">${actual.km} km <span style="font-size:10px;font-weight:600">${kmDiff>=0?'+':''}${kmDiff.toFixed(1)}</span></span></div>
+            <div class="pva-row"><span class="pva-key">Distance</span><span class="pva-val">${actual.km} km <span style="font-size:10px;font-weight:600">${kmDiff>=0?'+':''}${kmDiff.toFixed(1)}</span></span></div>
             <div class="pva-row"><span class="pva-key">Pace</span><span class="pva-val">${actual.p}/km <span style="font-size:10px;font-weight:600">${paceDiff>0?'⚡faster':paceDiff<-15?'🐢slower':''}</span></span></div>
-            <div class="pva-row"><span class="pva-key">Durasi</span><span class="pva-val">${actual.min} mnt</span></div>
+            <div class="pva-row"><span class="pva-key">Duration</span><span class="pva-val">${actual.min} min</span></div>
             ${actual.hr?`<div class="pva-row"><span class="pva-key">HR</span><span class="pva-val">${actual.hr} bpm</span></div>`:''}
+            ${dailyTrimp>0?`<div class="pva-row"><span class="pva-key">TRIMP</span><span class="pva-val" style="color:${trimpDayStatus.col}">${dailyTrimp} pts <span style="font-size:10px">(${trimpDayStatus.lbl})</span></span></div>`:''}
           </div>
         </div>
       </div>
@@ -967,10 +1077,10 @@ function renderSchedContent(){
     <div class="si-icon" style="background:${bg}">${TYPE_ICON[sess.type]||'🏃'}</div>
     <div class="si-info">
       <div class="si-name">${sess.t}</div>
-      <div class="si-det">Pace target ${sess.p}/km · Minggu ${sess.w}</div>
+      <div class="si-det">Target pace ${sess.p}/km · Week ${sess.w}</div>
       <div style="margin-top:5px;display:flex;gap:6px">
         ${isToday?'<span class="badge b-sky">Hari ini</span>':''}
-        ${isDone?'<span class="badge b-green">✓ Sudah tercatat</span>':'<span class="badge b-gray">Belum ada data</span>'}
+        ${isDone?'<span class="badge b-green">✓ Logged ✓</span>':'<span class="badge b-gray">No data yet</span>'}
       </div>
     </div>
     <div style="text-align:right"><div style="font-size:15px;font-weight:800;color:${col}">${sess.k}km</div><div style="color:var(--g300);font-size:18px">›</div></div>
@@ -981,7 +1091,7 @@ function renderSchedContent(){
   </div>`;
 }
 
-function chWeek(dir){APP.weekOffset+=dir;APP.selDay=new Date().getDay();renderWeekRange();renderDayStrip();renderSchedContent();}
+function chWeek(dir){APP.weekOffset+=dir;APP.selDay=getDayIndex(new Date());renderWeekRange();renderDayStrip();renderSchedContent();}
 
 // ============================================================
 // LOG
@@ -989,7 +1099,7 @@ function chWeek(dir){APP.weekOffset+=dir;APP.selDay=new Date().getDay();renderWe
 function renderLog(){
   const logs=allLogs();
   document.getElementById('log-sub').textContent=logs.length+' sesi · '+totalKm()+' km total';
-  document.getElementById('log-content').innerHTML=logs.length?logs.map(l=>logItem(l)).join(''):'<div class="empty"><div class="empty-i">📋</div><div class="empty-t">Belum ada data</div></div>';
+  document.getElementById('log-content').innerHTML=logs.length?logs.map(l=>logItem(l)).join(''):'<div class="empty"><div class="empty-i">📋</div><div class="empty-t">No data yet</div></div>';
 }
 
 function logItem(l){
@@ -1001,7 +1111,7 @@ function logItem(l){
       <div class="li-title">${l.n||'Lari'} ${src}</div>
       <div class="li-meta">
         <div class="li-m"><b>${l.km}</b> km</div>
-        <div class="li-m"><b>${l.min}</b> mnt</div>
+        <div class="li-m"><b>${l.min}</b> min</div>
         <div class="li-m"><b>${l.p}</b>/km</div>
         ${l.hr?`<div class="li-m"><b>${l.hr}</b> bpm</div>`:''}
         ${l.cal?`<div class="li-m"><b>${l.cal}</b> kcal</div>`:''}
@@ -1016,7 +1126,10 @@ function logItem(l){
 function renderProgress(){
   const logs=allLogs(); const streak=calcStreak(logs);
   const tkm=parseFloat(totalKm());
-  const weekly=getWeeklyKm(logs,10); const maxKm=Math.max(...weekly.map(w=>w.km),1);
+  const weeklyStats=getWeeklyStats(logs,10);
+  const weekly=weeklyStats; // compatible with existing km refs
+  const maxKm=Math.max(...weekly.map(w=>w.km),1);
+  const maxTrimp=Math.max(...weekly.map(w=>w.trimp),1);
   const paces=logs.map(l=>paceToSec(l.p)).filter(p=>p>0);
   const bestPace=paces.length?secToPace(Math.min(...paces)):'—';
   const longestRun=Math.max(...logs.map(l=>parseFloat(l.km||0)),0).toFixed(1);
@@ -1025,41 +1138,186 @@ function renderProgress(){
   const avgHR=hrArr.length?Math.round(hrArr.reduce((a,b)=>a+b,0)/hrArr.length):151;
   const fit=getFitness();
 
+  // ── Pace trend (last 12 runs) ─────────────────────────────────────────────
+  const recentRuns = logs.filter(l=>paceToSec(l.p)>0).slice(0,12).reverse();
+  const trendMin = recentRuns.length ? Math.min(...recentRuns.map(l=>paceToSec(l.p))) : 300;
+  const trendMax = recentRuns.length ? Math.max(...recentRuns.map(l=>paceToSec(l.p))) : 600;
+  const trendRange = trendMax - trendMin || 60;
+
+  // ── Weekly Plan vs Actual ─────────────────────────────────────────────────
+  const plan = APP.plan || ICS_PLAN;
+  const now7 = new Date();
+  const weekStart = getMonWeekStart(now7, 0);
+  weekStart.setHours(0,0,0,0);
+  const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate()+6);
+  const weekDates = [];
+  for(let i=0;i<7;i++){ const d=new Date(weekStart); d.setDate(weekStart.getDate()+i); weekDates.push(d.toISOString().slice(0,10)); }
+  const weekPlan = weekDates.map(d=>plan.find(p=>p.d===d)).filter(Boolean).filter(p=>p.type!=='rest');
+  const weekActual = weekDates.map(d=>logs.find(l=>l.d===d)).filter(Boolean);
+  const planKmTotal = weekPlan.reduce((s,p)=>s+parseFloat(p.k||0),0);
+  const actualKmTotal = weekActual.reduce((s,l)=>s+parseFloat(l.km||0),0);
+  const planSessions = weekPlan.length;
+  const actualSessions = weekActual.length;
+  const consistency = planSessions>0 ? Math.min(100,Math.round((actualSessions/planSessions)*100)) : 0;
+  const kmPct = planKmTotal>0 ? Math.min(150,Math.round((actualKmTotal/planKmTotal)*100)) : 0;
+
+  // ── Race Finish Time Predictor ────────────────────────────────────────────
+  const target = APP.target||{type:'35k',raceName:'35K Race Day',raceDate:'2027-05-27'};
+  const goalDistMap = {'5k':5,'10k':10,'21k':21.1,'35k':35,'42k':42.195,'speed':10};
+  const goalDist = goalDistMap[target.type]||35;
+  const avgPaceSec = paceToSec(fit.avgPace);
+  const bestPaceSec = paceToSec(fit.bestPace);
+  // Riegel formula estimate: T2 = T1 * (D2/D1)^1.06
+  const ref5kSec = avgPaceSec * 5; // estimated 5k time
+  const predictedSec = ref5kSec * Math.pow(goalDist/5, 1.06);
+  const predH = Math.floor(predictedSec/3600);
+  const predM = Math.floor((predictedSec%3600)/60);
+  const predS = Math.round(predictedSec%60);
+  const predictedTime = predH>0 ? `${predH}h ${predM}m` : `${predM}m ${predS}s`;
+  const optimisticSec = bestPaceSec * goalDist * 0.95;
+  const optH = Math.floor(optimisticSec/3600);
+  const optM = Math.floor((optimisticSec%3600)/60);
+  const optimisticTime = optH>0 ? `${optH}h ${optM}m` : `${optM}m`;
+
   let html=`<div class="sc-grid">
     <div class="sc"><div class="sc-v">${tkm}</div><div class="sc-l">Total km</div></div>
     <div class="sc"><div class="sc-v">${logs.length}</div><div class="sc-l">Total sesi</div></div>
     <div class="sc"><div class="sc-v">🔥${streak}</div><div class="sc-l">Streak</div></div>
   </div>
-  <div class="sl">Kondisi fitness saat ini</div>
+  <div class="sl">Current fitness</div>
   <div style="padding:0 16px 12px">
     <div class="fitness-card">
-      <div class="fitness-row"><span class="fitness-label">Pace rata-rata (10 sesi terakhir)</span><span class="fitness-val" style="color:var(--sky)">${fit.avgPace}/km</span></div>
-      <div class="fitness-row"><span class="fitness-label">Pace terbaik</span><span class="fitness-val" style="color:var(--green)">${fit.bestPace}/km</span></div>
-      <div class="fitness-row"><span class="fitness-label">HR rata-rata</span><span class="fitness-val">${avgHR} bpm</span></div>
-      <div class="fitness-row"><span class="fitness-label">Long run terpanjang</span><span class="fitness-val">${longestRun} km</span></div>
-      <div class="fitness-row"><span class="fitness-label">Rata-rata km/minggu</span><span class="fitness-val">${fit.avgWeeklyKm} km</span></div>
+      <div class="fitness-row"><span class="fitness-label">Avg pace (last 10 sessions)</span><span class="fitness-val" style="color:var(--sky)">${fit.avgPace}/km</span></div>
+      <div class="fitness-row"><span class="fitness-label">Best pace</span><span class="fitness-val" style="color:var(--green)">${fit.bestPace}/km</span></div>
+      <div class="fitness-row"><span class="fitness-label">Avg HR</span><span class="fitness-val">${avgHR} bpm</span></div>
+      <div class="fitness-row"><span class="fitness-label">Longest run</span><span class="fitness-val">${longestRun} km</span></div>
+      <div class="fitness-row"><span class="fitness-label">Avg km/week</span><span class="fitness-val">${fit.avgWeeklyKm} km</span></div>
     </div>
   </div>
-  <div class="sl">Km mingguan (10 minggu terakhir)</div>
+  <div class="sl">Weekly km (last 10 weeks)</div>
   <div class="bar-wrap"><div class="bar-chart">`;
   weekly.forEach((w,i)=>{
     const h=Math.round((w.km/maxKm)*90); const isNow=i===weekly.length-1;
     html+=`<div class="bc"><div class="bar-v">${w.km>0?w.km.toFixed(0):''}</div><div class="bar${isNow?' now':''}" style="height:${h}%"></div><div class="bar-l">${w.label}</div></div>`;
   });
   html+=`</div></div>
+
+  <div class="sl">📈 Weekly Training Load (TRIMP)</div>
+  <div class="bar-wrap"><div class="bar-chart">`;
+  weeklyStats.forEach((w,i)=>{
+    const h=Math.round((w.trimp/maxTrimp)*90)||2; const isNow=i===weeklyStats.length-1;
+    let barColor='var(--sky)';
+    if(w.trimp>400) barColor='var(--red)';
+    else if(w.trimp>=150 && w.trimp<=300) barColor='var(--green)';
+    else if(w.trimp>300) barColor='var(--orange)';
+    html+=`<div class="bc"><div class="bar-v" style="font-size:8px;color:${barColor}">${w.trimp>0?w.trimp:''}</div><div class="bar${isNow?' now':''}" style="height:${h}%;background:${barColor};border-color:${barColor}"></div><div class="bar-l">${w.label}</div></div>`;
+  });
+  const thisTrimp = weeklyStats[weeklyStats.length-1]?.trimp||0;
+  const thisWeekSessions = weeklyStats[weeklyStats.length-1] ? allLogs().filter(l=>{
+    const ws=getMonWeekStart(new Date(),0); const we=new Date(ws); we.setDate(ws.getDate()+6);
+    const d=new Date(l.d); return d>=ws && d<=we;
+  }).length : 0;
+  // Dynamic thresholds: 80 pts/session (low), 180 pts/session (optimal ceiling)
+  const dynLow = thisWeekSessions * 80;
+  const dynOpt = thisWeekSessions * 180;
+  const dynHeavy = thisWeekSessions * 220;
+  const trimpStatus = thisTrimp>dynHeavy
+    ? {txt:`⚠️ Overtraining risk (>${dynHeavy} for ${thisWeekSessions} sessions)`,col:'var(--red)'}
+    : thisTrimp>=dynLow && thisTrimp<=dynOpt
+    ? {txt:`✅ Optimal load for ${thisWeekSessions} sessions this week`,col:'var(--green)'}
+    : thisTrimp>dynOpt
+    ? {txt:`🔶 Heavy load (>${dynOpt} for ${thisWeekSessions} sessions)`,col:'var(--orange)'}
+    : thisTrimp>0
+    ? {txt:`💤 Light load — can push more (target >${dynLow})`,col:'var(--sky)'}
+    : {txt:'No HR data this week — add HR to runs for TRIMP',col:'var(--g400)'};
+  html+=`</div>
+  <div style="margin-top:8px;padding:8px 10px;border-radius:8px;background:var(--g50);border:1px solid var(--g200);font-size:12px;font-weight:600;color:${trimpStatus.col}">${trimpStatus.txt} · This week: <b>${thisTrimp} pts</b> (Optimal: 150–300)</div>
+  </div>
+
   <div class="sl">Personal Best</div>
   <div class="pb-grid">
-    <div class="pb"><div class="pb-l">⚡ Pace terbaik</div><div class="pb-v">${bestPace}</div><div class="pb-s">per km</div></div>
-    <div class="pb"><div class="pb-l">📏 Jarak terpanjang</div><div class="pb-v">${longestRun}</div><div class="pb-s">km</div></div>
-    <div class="pb"><div class="pb-l">❤️ HR rata-rata</div><div class="pb-v">${avgHR}</div><div class="pb-s">bpm</div></div>
-    <div class="pb"><div class="pb-l">📅 Minggu terbaik</div><div class="pb-v">${bestWeekKm}</div><div class="pb-s">km</div></div>
+    <div class="pb"><div class="pb-l">⚡ Best pace</div><div class="pb-v">${bestPace}</div><div class="pb-s">per km</div></div>
+    <div class="pb"><div class="pb-l">📏 Longest run</div><div class="pb-v">${longestRun}</div><div class="pb-s">km single run</div></div>
+    <div class="pb"><div class="pb-l">❤️ Avg HR</div><div class="pb-v">${avgHR}</div><div class="pb-s">bpm</div></div>
+    <div class="pb"><div class="pb-l">📅 Best week</div><div class="pb-v">${bestWeekKm}</div><div class="pb-s">km</div></div>
+  </div>
+
+  <div class="sl">📅 This Week — Plan vs Actual</div>
+  <div style="padding:0 16px 4px">
+    <div style="background:var(--g50);border-radius:14px;padding:14px;border:1px solid var(--g200)">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+        <div style="background:#fff;border-radius:10px;padding:12px;border:1.5px solid var(--sky);text-align:center">
+          <div style="font-size:10px;font-weight:700;color:var(--sky2);text-transform:uppercase;margin-bottom:4px">Sessions</div>
+          <div style="font-size:20px;font-weight:800;color:var(--g900)">${actualSessions}<span style="font-size:13px;color:var(--g400)">/${planSessions}</span></div>
+          <div style="font-size:10px;color:var(--g500);margin-top:2px">${consistency}% consistent</div>
+        </div>
+        <div style="background:#fff;border-radius:10px;padding:12px;border:1.5px solid var(--green);text-align:center">
+          <div style="font-size:10px;font-weight:700;color:#15803D;text-transform:uppercase;margin-bottom:4px">Distance</div>
+          <div style="font-size:20px;font-weight:800;color:var(--g900)">${actualKmTotal.toFixed(1)}<span style="font-size:13px;color:var(--g400)">/${planKmTotal.toFixed(1)}</span></div>
+          <div style="font-size:10px;color:var(--g500);margin-top:2px">${kmPct}% of plan</div>
+        </div>
+      </div>
+      <div style="background:var(--g200);border-radius:4px;height:8px;overflow:hidden;margin-bottom:6px">
+        <div style="height:100%;border-radius:4px;background:${kmPct>=100?'var(--green)':kmPct>=70?'var(--sky)':'var(--orange)'};width:${Math.min(100,kmPct)}%;transition:width .5s"></div>
+      </div>
+      <div style="font-size:11px;color:var(--g500);text-align:center">${kmPct>=100?'🎉 Weekly target hit!':kmPct>=70?'💪 On track — keep going!':'⚡ Still time to hit the target!'}</div>
+    </div>
+  </div>
+
+  <div class="sl">📈 Pace Trend (Last ${recentRuns.length} runs)</div>
+  <div style="padding:0 16px 4px">
+    <div style="background:var(--g50);border-radius:14px;padding:14px;border:1px solid var(--g200)">
+      ${recentRuns.length < 3 ? '<div style="font-size:13px;color:var(--g400);text-align:center;padding:12px">Need at least 3 runs to show trend</div>' : (() => {
+        const W=340, H=80, pad=8;
+        const pts = recentRuns.map((l,i)=>{
+          const x = pad + (i/(recentRuns.length-1||1))*(W-pad*2);
+          const sec = paceToSec(l.p);
+          const y = pad + ((sec-trendMin)/trendRange)*(H-pad*2);
+          return {x,y,pace:l.p,d:l.d};
+        });
+        const pathD = pts.map((p,i)=>(i===0?'M':'L')+p.x.toFixed(1)+','+p.y.toFixed(1)).join(' ');
+        const areaD = pathD + ' L'+pts[pts.length-1].x.toFixed(1)+','+(H+4)+' L'+pts[0].x.toFixed(1)+','+(H+4)+' Z';
+        const dots = pts.map(p=>'<circle cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="3" fill="var(--sky)" stroke="#fff" stroke-width="1.5"/>').join('');
+        const improving = pts.length>=3 && paceToSec(pts[pts.length-1].pace) < paceToSec(pts[0].pace);
+        return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:80px">'
+          +'<defs><linearGradient id="pg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--sky)" stop-opacity=".3"/><stop offset="100%" stop-color="var(--sky)" stop-opacity="0"/></linearGradient></defs>'
+          +'<path d="'+areaD+'" fill="url(#pg)"/>'
+          +'<path d="'+pathD+'" fill="none" stroke="var(--sky)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>'
+          +dots+'</svg>'
+          +'<div style="display:flex;justify-content:space-between;margin-top:4px">'
+          +'<span style="font-size:10px;color:var(--g400)">'+recentRuns[0].d.slice(5)+'</span>'
+          +'<span style="font-size:11px;font-weight:700;color:'+(improving?'var(--green)':'var(--orange)')+'">'+( improving?'📉 Getting faster!':'📈 Room to improve')+'</span>'
+          +'<span style="font-size:10px;color:var(--g400)">'+recentRuns[recentRuns.length-1].d.slice(5)+'</span>'
+          +'</div>';
+      })()}
+    </div>
+  </div>
+
+  <div class="sl">🏁 Race Finish Predictor</div>
+  <div style="padding:0 16px 16px">
+    <div style="background:linear-gradient(135deg,var(--purple),#6D28D9);border-radius:14px;padding:16px;color:#fff">
+      <div style="font-size:12px;opacity:.8;margin-bottom:4px">Target: ${target.raceName||target.type.toUpperCase()} · ${goalDist}km</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px">
+        <div style="background:rgba(255,255,255,.15);border-radius:10px;padding:12px;text-align:center">
+          <div style="font-size:10px;opacity:.7;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Realistic</div>
+          <div style="font-size:22px;font-weight:800">${predictedTime}</div>
+          <div style="font-size:10px;opacity:.7;margin-top:2px">based on avg pace</div>
+        </div>
+        <div style="background:rgba(255,255,255,.15);border-radius:10px;padding:12px;text-align:center">
+          <div style="font-size:10px;opacity:.7;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Optimistic</div>
+          <div style="font-size:22px;font-weight:800">${optimisticTime}</div>
+          <div style="font-size:10px;opacity:.7;margin-top:2px">based on best pace</div>
+        </div>
+      </div>
+      <div style="margin-top:10px;font-size:11px;opacity:.75;text-align:center">Riegel formula · Keep training to improve!</div>
+    </div>
   </div>`;
   // Race yang sudah diikuti — detect dari keyword "Event Race" di name
   const races = allLogs().filter(l=>l.n && l.n.toLowerCase().includes('event race'))
     .sort((a,b)=>b.d.localeCompare(a.d));
 
   if(races.length){
-    html += `<div class="sl">Race yang Sudah Diikuti</div>`;
+    html += `<div class="sl">Races Completed</div>`;
     races.forEach(r=>{
       const dateParts = r.d.split('-');
       const dateObj = new Date(r.d);
@@ -1087,15 +1345,26 @@ function renderProgress(){
 // ============================================================
 // PROFILE
 // ============================================================
-function renderProfile(){
+function saveProfile(){
+  const rhr = parseInt(document.getElementById('inp-rhr').value)||50;
+  const maxHR = parseInt(document.getElementById('inp-mhr').value)||190;
+  if(rhr >= maxHR){ showToast('RHR must be lower than Max HR!'); return; }
+  APP.profile = { rhr, maxHR };
+  saveApp();
+  showToast('✅ Profile saved — TRIMP recalculated!');
+  renderProgress();
+  renderToday();
+}
+
+function renderProfilee(){
   const logs=allLogs(); const streak=calcStreak(logs);
   const now=new Date(); const target=APP.target||{type:'35k',raceName:'35K',raceDate:'2027-05-27'};
-  const lastSync=APP.importedLogs.length>0?APP.importedLogs[0]._syncDate||'—':'Belum sync';
+  const lastSync=APP.importedLogs.length>0?APP.importedLogs[0]._syncDate||'—':'Not synced yet';
   let html=`<div style="padding:24px 20px 14px;text-align:center">
     <div class="av">IW</div>
     <div style="font-size:21px;font-weight:800">Iwe</div>
     <div style="font-size:13px;color:var(--g500);margin-top:3px">Target: ${target.raceName||target.type.toUpperCase()}</div>
-    <div style="margin-top:10px"><button class="btn btn-purple" style="width:auto;padding:10px 20px;font-size:14px" onclick="openTargetModal()">🎯 Ganti Target / Generate Plan Baru</button></div>
+    <div style="margin-top:10px"><button class="btn btn-purple" style="width:auto;padding:10px 20px;font-size:14px" onclick="openTargetModal()">🎯 Change Target / Generate Plan Baru</button></div>
   </div>
   <div class="sc-grid">
     <div class="sc"><div class="sc-v">🔥${streak}</div><div class="sc-l">Streak</div></div>
@@ -1107,18 +1376,18 @@ function renderProfile(){
   <div class="card"><div class="cb">
     <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--g100)"><span style="font-size:14px;color:var(--g500)">Target</span><span style="font-size:14px;font-weight:700">${target.type.toUpperCase()}</span></div>
     <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--g100)"><span style="font-size:14px;color:var(--g500)">Race</span><span style="font-size:14px;font-weight:700">${target.raceName||'—'}</span></div>
-    <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--g100)"><span style="font-size:14px;color:var(--g500)">Tanggal race</span><span style="font-size:14px;font-weight:700">${target.raceDate||'—'}</span></div>
+    <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--g100)"><span style="font-size:14px;color:var(--g500)">Race date</span><span style="font-size:14px;font-weight:700">${target.raceDate||'—'}</span></div>
     <div style="display:flex;justify-content:space-between;padding:6px 0"><span style="font-size:14px;color:var(--g500)">Hari latihan</span><span style="font-size:14px;font-weight:700">${target.days} hari/minggu</span></div>
   </div></div>
   <div class="sl">Sync Data Strava</div>
   <div class="card"><div class="cb">
     <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--g100)"><span style="font-size:14px;color:var(--g500)">Strava base</span><span style="font-size:14px;font-weight:700">56 sesi · 345.8 km</span></div>
-    <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--g100)"><span style="font-size:14px;color:var(--g500)">☁️ Cloud (Supabase)</span><span style="font-size:14px;font-weight:700;color:var(--green)">${APP.importedLogs.length} sesi tersync</span></div>
-    <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--g100)"><span style="font-size:14px;color:var(--g500)">Last sync CSV</span><span style="font-size:14px;font-weight:700">${lastSync}</span></div>
+    <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--g100)"><span style="font-size:14px;color:var(--g500)">☁️ Cloud (Supabase)</span><span style="font-size:14px;font-weight:700;color:var(--green)">${APP.importedLogs.length} sessions synced</span></div>
+    <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--g100)"><span style="font-size:14px;color:var(--g500)">Last CSV sync</span><span style="font-size:14px;font-weight:700">${lastSync}</span></div>
     <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
-      <button class="btn btn-green" onclick="syncFromGSheet().then(()=>{renderProfile();})">🔄 Sync Sekarang dari Strava</button>
-      <button class="btn btn-sky" onclick="loadLogsFromSupabase().then(()=>{renderProfile();renderLog();renderToday();})">☁️ Refresh dari Cloud</button>
-      <button class="btn btn-orange" onclick="showScreen('log');setTimeout(openImportModal,200)">⬆️ Upload CSV Manual</button>
+      <button class="btn btn-green" onclick="syncFromGSheet().then(()=>{renderProfilee();})">🔄 Sync Now from Strava</button>
+      <button class="btn btn-sky" onclick="loadLogsFromSupabase().then(()=>{renderProfilee();renderLog();renderToday();})">☁️ Refresh from Cloud</button>
+      <button class="btn btn-orange" onclick="showScreen('log');setTimeout(openImportModal,200)">⬆️ Upload CSV Manually</button>
     </div>
   </div></div>
   <div class="sl">Cara Sync</div>
@@ -1128,9 +1397,25 @@ function renderProfile(){
     3️⃣ Tab <b>Log</b> → <b>Upload CSV</b><br>
     4️⃣ Pilih file → tap <b>Import</b> ✅
   </div></div>
+  <div class="sl">❤️ Heart Rate Biometrics</div>
+  <div class="card"><div class="cb">
+    <div style="font-size:12px;color:var(--g500);margin-bottom:12px;line-height:1.5">Used to calculate TRIMP training load. Set your resting & max heart rate for accurate zones.</div>
+    <div class="fr" style="margin-bottom:12px">
+      <div class="fg">
+        <label class="fl">Resting HR (RHR)</label>
+        <input class="fi" type="number" id="inp-rhr" value="${(APP.profile||{rhr:50}).rhr}" min="30" max="80" placeholder="e.g. 50">
+      </div>
+      <div class="fg">
+        <label class="fl">Max HR (MHR)</label>
+        <input class="fi" type="number" id="inp-mhr" value="${(APP.profile||{maxHR:190}).maxHR}" min="140" max="220" placeholder="e.g. 190">
+      </div>
+    </div>
+    <button class="btn btn-green" onclick="saveProfile()">💾 Save & Recalculate TRIMP</button>
+    <div style="margin-top:8px;font-size:11px;color:var(--g400);text-align:center">Formula: MHR estimate = 220 - age · Measure RHR when you wake up</div>
+  </div></div>
   <div style="padding:16px 16px 32px;display:flex;flex-direction:column;gap:8px">
     <button class="btn btn-gray" style="color:var(--red);border:1.5px solid var(--red);background:none"
-      onclick="if(confirm('Reset CSV? Data Strava base tetap aman.')){APP.importedLogs=[];saveApp();renderProfile();renderLog();renderToday();showToast('CSV direset.');}">
+      onclick="if(confirm('Reset CSV? Data Strava base tetap aman.')){APP.importedLogs=[];saveApp();renderProfilee();renderLog();renderToday();showToast('CSV direset.');}">
       🗑️ Reset data CSV
     </button>
   </div>`;
@@ -1149,14 +1434,41 @@ function showWorkoutModal(ds){
   const sess=(APP.plan||ICS_PLAN).find(p=>p.d===ds);
   if(!sess) return;
   const col=TYPE_COLOR[sess.type]||'var(--sky)';
+
+  // Structured blocks renderer
+  let blocksHtml = '';
+  if(sess.blocks && sess.blocks.length){
+    blocksHtml = `<div style="margin-top:14px">
+      <div style="font-size:11px;font-weight:800;color:var(--g400);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">📋 Workout Structure</div>`;
+    sess.blocks.forEach((b,i)=>{
+      const bg = b.type==='Warm-up'?'var(--skylt)':b.type==='Cool-down'?'var(--greenlt)':'var(--orangelt)';
+      const border = b.type==='Warm-up'?'var(--sky)':b.type==='Cool-down'?'var(--green)':'var(--orange)';
+      const detail = b.km ? `${b.km}km @ ${b.pace}/km` : `${b.min} min`;
+      blocksHtml += `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:${bg};border-left:3px solid ${border};margin-bottom:6px">
+        <div style="font-size:20px">${b.icon||'🏃'}</div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:800;color:var(--g900)">${b.type}</div>
+          <div style="font-size:12px;color:var(--g600);margin-top:1px">${detail}</div>
+          <div style="font-size:11px;color:var(--g500);margin-top:1px">${b.desc||''}</div>
+        </div>
+        <div style="font-size:11px;font-weight:700;color:var(--g400)">${String(i+1).padStart(2,'0')}</div>
+      </div>`;
+    });
+    blocksHtml += '</div>';
+  } else {
+    // Generic checklist for non-structured sessions
+    blocksHtml = `<div style="margin-top:12px;background:var(--g50);border-radius:10px;padding:12px;font-size:13px;color:var(--g700);line-height:1.9">
+      ✅ Drink 500ml water 30 min before<br>
+      ✅ Dynamic warm-up 5 min (leg swings, high knees)<br>
+      ${parseFloat(sess.k)>=12?'✅ Carry gel/water for long run':'✅ Water + light snack is enough'}
+    </div>`;
+  }
+
   let html=`<div style="font-size:19px;font-weight:800;margin-bottom:4px">${TYPE_ICON[sess.type]||'🏃'} ${sess.t}</div>
-  <div style="font-size:12px;color:var(--g500);margin-bottom:14px">Minggu ${sess.w} · ${sess.k}km · pace target ${sess.p}/km</div>
-  <div class="tip"><div class="tip-t">💡 Tips Coach</div><div class="tip-b">${sess.tip||TYPE_TIPS[sess.type]||''}</div></div>
-  <div style="margin-top:12px;background:var(--g50);border-radius:10px;padding:12px;font-size:13px;color:var(--g700);line-height:1.8">
-    ✅ Minum 500ml air 30 mnt sebelum<br>
-    ✅ Warm-up dynamic 5 mnt (leg swings, high knees)<br>
-    ${parseFloat(sess.k)>=12?'✅ Bawa gel/minum untuk lari panjang':'✅ Cukup air putih dan snack ringan'}
-  </div>`;
+  <div style="font-size:12px;color:var(--g500);margin-bottom:14px">Week ${sess.w} · ${sess.k}km · target pace ${sess.p}/km</div>
+  <div class="tip"><div class="tip-t">💡 Coach Tips</div><div class="tip-b">${sess.tip||TYPE_TIPS[sess.type]||''}</div></div>
+  ${blocksHtml}`;
+
   document.getElementById('wo-content').innerHTML=html;
   document.getElementById('wo-modal').classList.add('open');
 }
@@ -1222,7 +1534,7 @@ function confirmImport(){
   APP.importedLogs=pendingImport;
   saveApp();
   closeModal('import-modal');
-  showToast(`✅ ${pendingImport.length} sesi diimport!`);
+  showToast(`✅ ${pendingImport.length} sessions imported!`);
   renderToday(); renderLog();
   // Sync to Supabase cloud
   saveLogsToSupabase(pendingImport);

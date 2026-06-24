@@ -151,6 +151,20 @@ html,body{height:100%;background:#fff;font-family:-apple-system,BlinkMacSystemFo
 .dc.drag-over{background:var(--skylt);border-radius:8px;border-bottom-color:var(--sky)!important}
 .sched-drag-handle{cursor:grab;font-size:16px;color:var(--g300);padding:0 4px}
 .sched-drag-handle:active{cursor:grabbing}
+/* RPE BUTTONS */
+.rpe-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:8px 0}
+.rpe-btn{padding:10px 4px;border-radius:10px;border:1.5px solid var(--g200);background:var(--g50);font-size:13px;font-weight:700;cursor:pointer;text-align:center;transition:all .15s}
+.rpe-btn:active{transform:scale(.95)}
+.rpe-btn.selected{border-color:var(--sky);background:var(--skylt);color:var(--sky2)}
+/* READINESS CARD */
+.readiness-card{margin:0 16px 12px;border-radius:16px;padding:14px 16px;border:1.5px solid var(--g200)}
+.readiness-score{font-size:36px;font-weight:900;line-height:1}
+/* TAP TO MOVE */
+.move-day-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
+.move-day-btn{padding:10px 4px;border-radius:10px;border:1.5px solid var(--g200);background:var(--g50);font-size:12px;font-weight:700;cursor:pointer;text-align:center}
+.move-day-btn:active{transform:scale(.95)}
+.move-day-btn.has-sess{border-color:var(--orange);background:var(--orangelt);color:#C2410C}
+.move-day-btn.empty{border-color:var(--green);background:var(--greenlt);color:#15803D}
 </style>
 </head>
 <body>
@@ -266,6 +280,27 @@ html,body{height:100%;background:#fff;font-family:-apple-system,BlinkMacSystemFo
 </div>
 
 <!-- WORKOUT MODAL -->
+<!-- MOVE SESSION MODAL -->
+<div class="mo" id="move-modal" onclick="if(event.target===this)closeModal('move-modal')">
+  <div class="modal">
+    <div class="mh"></div>
+    <div class="mt">📅 Move Session</div>
+    <div id="move-content"></div>
+    <button class="btn btn-gray" style="margin-top:12px" onclick="closeModal('move-modal')">Cancel</button>
+  </div>
+</div>
+
+<!-- MANUAL READINESS MODAL -->
+<div class="mo" id="manual-readiness-modal" onclick="if(event.target===this)closeModal('manual-readiness-modal')">
+  <div class="modal">
+    <div class="mh"></div>
+    <div class="mt">🌅 Morning Readiness Check</div>
+    <div class="mt-sub">Quick check-in — takes 10 seconds</div>
+    <div id="manual-readiness-content"></div>
+    <button class="btn btn-gray" style="margin-top:8px" onclick="closeModal('manual-readiness-modal')">Cancel</button>
+  </div>
+</div>
+
 <div class="mo" id="wo-modal">
   <div class="modal">
     <div class="mh"></div>
@@ -491,8 +526,42 @@ function parseCSVtoLogs(text){
   return runs;
 }
 
+// ── Readiness & RPE Supabase ─────────────────────────────────
+async function saveReadiness(data){
+  try{
+    await fetch(SB_URL+'/rest/v1/daily_readiness', {
+      method:'POST',
+      headers:{...SB_HEADERS,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
+      body: JSON.stringify({user_id:SB_USER, ...data})
+    });
+  }catch(e){ console.error('Readiness save failed',e); }
+}
+
+async function loadTodayReadiness(){
+  try{
+    const today = new Date().toISOString().slice(0,10);
+    const res = await fetch(SB_URL+`/rest/v1/daily_readiness?user_id=eq.${SB_USER}&date=eq.${today}`, {headers:SB_HEADERS});
+    const data = await res.json();
+    return data[0]||null;
+  }catch(e){ return null; }
+}
+
+async function saveRPE(date, rpe){
+  const existing = APP.rpeLog || {};
+  existing[date] = rpe;
+  APP.rpeLog = existing;
+  saveApp();
+  await saveReadiness({date, rpe});
+  showToast(`RPE ${rpe}/10 saved!`);
+  renderToday();
+}
+
 // Auto sync on startup
 syncFromGSheet();
+
+// Load today's readiness async
+let todayReadiness = null;
+loadTodayReadiness().then(r=>{ todayReadiness=r; renderToday(); });
 
 // ============================================================
 // COMPUTED FITNESS FROM HISTORY
@@ -855,12 +924,49 @@ function renderToday(){
     </div>`;
   }
 
+  // ── Readiness Card ──────────────────────────────────────────
+  const readiness = todayReadiness;
+  if(readiness){
+    const rs = readiness.readiness_score||0;
+    const rsColor = rs>=80?'var(--green)':rs>=60?'var(--sky)':rs>=40?'var(--orange)':'var(--red)';
+    const rsLabel = rs>=80?'Ready to Push 🔥':rs>=60?'Good to Go ✅':rs>=40?'Take it Easy 🐢':'Rest Recommended 💤';
+    html += `<div class="readiness-card" style="background:${rs>=80?'var(--greenlt)':rs>=60?'var(--skylt)':rs>=40?'var(--orangelt)':'var(--redlt)'};border-color:${rsColor}">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div>
+          <div class="readiness-score" style="color:${rsColor}">${rs}</div>
+          <div style="font-size:10px;color:var(--g500);font-weight:700;text-transform:uppercase;margin-top:2px">Readiness</div>
+        </div>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:800;color:var(--g900)">${rsLabel}</div>
+          <div style="font-size:11px;color:var(--g500);margin-top:4px;display:flex;gap:10px">
+            ${readiness.hrv?`<span>HRV ${readiness.hrv}ms</span>`:''}
+            ${readiness.rhr?`<span>RHR ${readiness.rhr}bpm</span>`:''}
+            ${readiness.sleep_hours?`<span>😴 ${readiness.sleep_hours}h</span>`:''}
+          </div>
+        </div>
+      </div>
+    </div>`;
+  } else {
+    html += `<div class="readiness-card" style="background:var(--g50)">
+      <div style="font-size:12px;font-weight:700;color:var(--g500);margin-bottom:6px">📊 TODAY'S READINESS</div>
+      <div style="font-size:12px;color:var(--g400);line-height:1.6">No data yet — set up Apple Shortcuts to auto-send HRV & sleep data every morning, or <b style="color:var(--sky);cursor:pointer" onclick="openManualReadiness()">log manually</b>.</div>
+    </div>`;
+  }
+
   if(isLogged){
     const todayLog = logs.find(l=>l.d===today);
-    html += `<div class="card"><div class="cb" style="text-align:center;padding:24px 16px">
+    const savedRPE = (APP.rpeLog||{})[today];
+    html += `<div class="card"><div class="cb" style="text-align:center;padding:20px 16px">
       <div style="font-size:44px;margin-bottom:8px">✅</div>
-      <div style="font-size:17px;font-weight:800;margin-bottom:4px">Sudah lari hari ini!</div>
+      <div style="font-size:17px;font-weight:800;margin-bottom:4px">Run logged!</div>
       <div style="font-size:13px;color:var(--g500)">${todayLog?todayLog.km+'km · '+todayLog.min+' min · '+todayLog.p+'/km':''}</div>
+      ${savedRPE ? `<div style="margin-top:10px;display:inline-flex;align-items:center;gap:6px;background:var(--skylt);border-radius:20px;padding:6px 14px"><span style="font-size:13px;font-weight:800;color:var(--sky2)">RPE ${savedRPE}/10</span><span style="font-size:11px;color:var(--sky2)">${savedRPE<=3?'Easy':savedRPE<=5?'Moderate':savedRPE<=7?'Hard':'Very Hard'}</span></div>` :
+      `<div style="margin-top:12px">
+        <div style="font-size:12px;font-weight:700;color:var(--g500);margin-bottom:8px">How hard was it? (RPE 1–10)</div>
+        <div class="rpe-grid">
+          ${[1,2,3,4,5,6,7,8,9,10].map(n=>`<button class="rpe-btn" onclick="saveRPE('${today}',${n})">${n}<div style="font-size:9px;color:var(--g400)">${n<=3?'Easy':n<=5?'Mod':n<=7?'Hard':'Max'}</div></button>`).join('')}
+        </div>
+      </div>`}
     </div></div>`;
   } else if(sess && sess.type!=='rest'){
     const col = TYPE_COLOR[sess.type]||'var(--sky)';
@@ -1073,17 +1179,24 @@ function renderSchedContent(){
     </div>`;
   }
 
-  el.innerHTML=`<div class="si" onclick="showWorkoutModal('${ds}')">
+  el.innerHTML=`<div class="si"
+    draggable="true"
+    ondragstart="dragFromDate='${ds}';event.dataTransfer.setData('text/plain','${ds}');this.style.opacity='.5'"
+    ondragend="this.style.opacity='1';document.querySelectorAll('.dc').forEach(e=>e.classList.remove('drag-over'))"
+    onclick="showWorkoutModal('${ds}')">
     <div class="si-icon" style="background:${bg}">${TYPE_ICON[sess.type]||'🏃'}</div>
     <div class="si-info">
       <div class="si-name">${sess.t}</div>
       <div class="si-det">Target pace ${sess.p}/km · Week ${sess.w}</div>
       <div style="margin-top:5px;display:flex;gap:6px">
-        ${isToday?'<span class="badge b-sky">Hari ini</span>':''}
+        ${isToday?'<span class="badge b-sky">Today</span>':''}
         ${isDone?'<span class="badge b-green">✓ Logged ✓</span>':'<span class="badge b-gray">No data yet</span>'}
       </div>
     </div>
-    <div style="text-align:right"><div style="font-size:15px;font-weight:800;color:${col}">${sess.k}km</div><div style="color:var(--g300);font-size:18px">›</div></div>
+    <div style="display:flex;align-items:center;gap:6px">
+      <div style="text-align:right"><div style="font-size:15px;font-weight:800;color:${col}">${sess.k}km</div></div>
+      <button onclick="event.stopPropagation();openMoveModal('${ds}')" style="background:var(--g100);border:none;border-radius:8px;padding:6px 8px;font-size:12px;cursor:pointer;color:var(--g600);font-weight:700" title="Move session">📅</button>
+    </div>
   </div>
   ${pvaHtml}
   <div style="padding:${actual?'4px':'12px'} 20px 12px">
@@ -1430,6 +1543,95 @@ function openWO(){
   const sess=(APP.plan||ICS_PLAN).find(p=>p.d===today);
   if(sess&&sess.type!=='rest') showWorkoutModal(today);
 }
+// ── Tap to Move ──────────────────────────────────────────────
+function openMoveModal(fromDate){
+  const plan = APP.plan || ICS_PLAN;
+  const now = new Date();
+  const ws = getMonWeekStart(now, APP.weekOffset);
+  const fromSess = plan.find(p=>p.d===fromDate);
+  if(!fromSess) return;
+
+  // Build 7 day options for current week
+  let daysHtml = '';
+  for(let i=0;i<7;i++){
+    const d = new Date(ws); d.setDate(ws.getDate()+i);
+    const ds = d.toISOString().slice(0,10);
+    if(ds===fromDate) continue;
+    const existing = plan.find(p=>p.d===ds);
+    const isRest = !existing || existing.type==='rest';
+    const label = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][i];
+    const dateNum = d.getDate();
+    daysHtml += `<button class="move-day-btn ${isRest?'empty':'has-sess'}"
+      onclick="executeMoveSession('${fromDate}','${ds}');closeModal('move-modal')">
+      <div style="font-size:11px;font-weight:700">${label}</div>
+      <div style="font-size:16px;font-weight:900">${dateNum}</div>
+      <div style="font-size:9px;margin-top:2px">${isRest?'Rest':'Has session'}</div>
+    </button>`;
+  }
+
+  document.getElementById('move-content').innerHTML = `
+    <div style="font-size:14px;font-weight:700;color:var(--g600);margin-bottom:4px">Moving:</div>
+    <div style="font-size:16px;font-weight:800;margin-bottom:14px">${TYPE_ICON[fromSess.type]||'🏃'} ${fromSess.t}</div>
+    <div style="font-size:12px;color:var(--g500);margin-bottom:8px">Move to which day? <span style="color:var(--green)">■ Green = rest day</span> · <span style="color:var(--orange)">■ Orange = has session (will swap)</span></div>
+    <div class="move-day-grid">${daysHtml}</div>`;
+  document.getElementById('move-modal').classList.add('open');
+}
+
+function executeMoveSession(fromDate, toDate){
+  const plan = APP.plan || ICS_PLAN;
+  const fromSess = plan.find(p=>p.d===fromDate);
+  const toSess = plan.find(p=>p.d===toDate);
+  if(!fromSess) return;
+  if(toSess){ const tmp=fromSess.d; fromSess.d=toSess.d; toSess.d=tmp; }
+  else { fromSess.d = toDate; }
+  saveApp();
+  renderSchedule();
+  showToast('✅ Session moved!');
+}
+
+// ── Manual Readiness ─────────────────────────────────────────
+function openManualReadiness(){
+  const today = new Date().toISOString().slice(0,10);
+  document.getElementById('manual-readiness-content').innerHTML = `
+    <div class="fg">
+      <label class="fl">😴 Sleep last night</label>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">
+        ${['Poor 😞','OK 😐','Great 😊'].map((l,i)=>`<button class="rpe-btn" id="sleep-${i}" onclick="document.querySelectorAll('[id^=sleep-]').forEach(b=>b.classList.remove('selected'));this.classList.add('selected');this.dataset.val='${i+1}'">${l}</button>`).join('')}
+      </div>
+    </div>
+    <div class="fg" style="margin-top:12px">
+      <label class="fl">💪 Morning energy</label>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">
+        ${['Low 😴','Normal 🙂','High ⚡'].map((l,i)=>`<button class="rpe-btn" id="energy-${i}" onclick="document.querySelectorAll('[id^=energy-]').forEach(b=>b.classList.remove('selected'));this.classList.add('selected');this.dataset.val='${i+1}'">${l}</button>`).join('')}
+      </div>
+    </div>
+    <div class="fg" style="margin-top:12px">
+      <label class="fl">🦵 Legs / muscles</label>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">
+        ${['Sore 😣','OK 🙂','Fresh 💪'].map((l,i)=>`<button class="rpe-btn" id="legs-${i}" onclick="document.querySelectorAll('[id^=legs-]').forEach(b=>b.classList.remove('selected'));this.classList.add('selected');this.dataset.val='${i+1}'">${l}</button>`).join('')}
+      </div>
+    </div>
+    <button class="btn btn-green" style="margin-top:16px" onclick="submitManualReadiness('${today}')">💾 Save Readiness</button>`;
+  document.getElementById('manual-readiness-modal').classList.add('open');
+}
+
+async function submitManualReadiness(date){
+  const sleepEl = document.querySelector('[id^=sleep-].selected');
+  const energyEl = document.querySelector('[id^=energy-].selected');
+  const legsEl = document.querySelector('[id^=legs-].selected');
+  const sleep = sleepEl ? parseInt(sleepEl.dataset.val||sleepEl.id.slice(-1))+1 : 2;
+  const energy = energyEl ? parseInt(energyEl.dataset.val||energyEl.id.slice(-1))+1 : 2;
+  const legs = legsEl ? parseInt(legsEl.dataset.val||legsEl.id.slice(-1))+1 : 2;
+  const score = Math.round(((sleep-1)/2*40) + ((energy-1)/2*35) + ((legs-1)/2*25));
+  const readiness_score = Math.min(100, Math.max(0, score+40));
+  const data = {date, sleep_quality:sleep, readiness_score, notes:'manual'};
+  await saveReadiness(data);
+  todayReadiness = data;
+  closeModal('manual-readiness-modal');
+  showToast(`Readiness: ${readiness_score}/100`);
+  renderToday();
+}
+
 function showWorkoutModal(ds){
   const sess=(APP.plan||ICS_PLAN).find(p=>p.d===ds);
   if(!sess) return;
